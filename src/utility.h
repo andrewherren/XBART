@@ -147,6 +147,10 @@ void unique_value_count2(const double *Xpointer, matrix<size_t> &Xorder_std, std
 
 void get_X_range(const double *Xpointer, std::vector<std::vector<size_t>> &Xorder_std, std::vector<std::vector<double>> &X_range, size_t &n_y);
 
+void get_overlap(const double *Xpointer, const double *Xtestpointer, matrix<size_t> &Xorder_std, 
+                 matrix<size_t> &Xtestorder_std, matrix<double> &X_range, size_t &n_y_train, 
+                 size_t &n_y_test, bool &overlap);
+
 double normal_density(double y, double mean, double var, bool take_log);
 
 bool is_non_zero(size_t x);

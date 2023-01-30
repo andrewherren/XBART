@@ -251,6 +251,100 @@ void get_X_range(const double *Xpointer, std::vector<std::vector<size_t>> &Xorde
     return;
 }
 
+/******************************************************************************
+* This function assists in a specific use of XBART for causal inference. 
+* The training sequence is:
+* 
+*   1. Estimate mu(X) on (Y, X) | Z == 0
+*   2. Predict muhat(X) on (Y, X) | Z == 1
+*   3. Estimate tau(X) on (Y - muhat(X), X) | Z == 1
+*   4. Predict tauhat(X) on all of X and take its average as the ATE
+* 
+* While this parameterization can be helpful in some cases (for instance, 
+* when there are strong instruments in the data), it amplifies the problem 
+* of overlap since the first stage model only learns on the control 
+* data. If there is a strong correlation between the true mu(X) function 
+* and pi(X) (as in the case of "targeted selection" documented by Hahn, 
+* Murray and Carvalho (2020)), then in finite samples, the distribution
+* mu(X) | Z == 1 may be quite different from that of mu(X) | Z == 0. 
+* 
+* This is an experiment in partially addressing the problem with the
+* Gaussian process extrapolation machinery. Here, the training data 
+* will be control (Z = 0) samples and the test data will be treated (Z = 1)
+* samples. We define overlap based on the range of X values for the 
+* training and test sets in a given leaf. 
+* 
+* Function arguments
+* -------------------
+* Xpointer : Pointer to the original training data (X values)
+* Xtestpointer : Pointer to the original test data (X values)
+* Xorder_std : Matrix with training sample indices pre-sorted by column
+* Xtestorder_std : Matrix with test sample indices pre-sorted by column
+* X_range : Matrix of lower and upper range for each sample
+* n_y_train : Number of samples in the training set
+* n_y_test : Number of samples in the test set
+* overlap : Boolean indicator of whether a leaf satisfies overlap, 
+*           as defined in Wang and Hahn (2022)
+******************************************************************************/
+void get_overlap(const double *Xpointer, const double *Xtestpointer, 
+                 matrix<size_t> &Xorder_std, matrix<size_t> &Xtestorder_std, 
+                 matrix<double> &X_range, size_t &n_y_train, size_t &n_y_test, bool &overlap)
+{
+  size_t N_train_leaf = Xorder_std[0].size();
+  size_t N_test_leaf = Xtestorder_std[0].size();
+  size_t p = Xorder_std.size();
+  ini_matrix(X_range, 2, p);
+
+  std::vector<std::vector<double>> X_range_train;
+  std::vector<std::vector<double>> X_range_test;
+  ini_matrix(X_range_train, 2, p);
+  ini_matrix(X_range_test, 2, p);
+  // initialize range
+  for (size_t j = 0; j < p; j++){
+    X_range_train[j][0] = std::numeric_limits<double>::max();
+    X_range_train[j][1] = -std::numeric_limits<double>::max();
+    X_range_test[j][0] = std::numeric_limits<double>::max();
+    X_range_test[j][1] = -std::numeric_limits<double>::max();
+  }
+  
+  if ((N_train_leaf <= 1) | (N_test_leaf <= 1)) {
+    overlap = false;
+    for (size_t i = 0; i < p; i++){
+      X_range[i][0] = std::numeric_limits<double>::max();
+      X_range[i][1] = -std::numeric_limits<double>::max();
+    }
+    return;
+  }
+  
+  // Find the alpha/2 quantile of training sample
+  double alpha = 0.05;
+  size_t train_low = (size_t) ceil((double) N_train_leaf * alpha / 2);
+  size_t train_up = (size_t) floor((double) N_train_leaf * (1 - alpha / 2));
+  for (size_t i = 0; i < p; i++)
+  {
+    X_range_train[i][0] = *(Xpointer + i * n_y_train + Xorder_std[i][train_low]);
+    X_range_train[i][1] = *(Xpointer + i * n_y_train + Xorder_std[i][train_up]);
+  }
+  
+  // Find the alpha/2 quantile of test sample
+  size_t test_low = (size_t) ceil((double) N_test_leaf * alpha / 2);
+  size_t test_up = (size_t) floor((double) N_test_leaf * (1 - alpha / 2));
+  for (size_t i = 0; i < p; i++)
+  {
+    X_range_test[i][0] = *(Xtestpointer + i * n_y_test + Xtestorder_std[i][test_low]);
+    X_range_test[i][1] = *(Xtestpointer + i * n_y_test + Xtestorder_std[i][test_up]);
+  }
+  
+  // Get overlap
+  for (size_t i = 0; i < p; i++){
+    X_range[i][0] = (X_range_test[i][0] > X_range_train[i][0]) ? X_range_test[i][0] : X_range_train[i][0];
+    X_range[i][1] = (X_range_test[i][1] < X_range_train[i][1]) ? X_range_test[i][1] : X_range_train[i][1];
+    if (X_range[i][0] >= X_range[i][1]) overlap = false;
+  }
+  
+  return;
+}
+
 double normal_density(double y, double mean, double var, bool take_log)
 {
     // density of normal distribution

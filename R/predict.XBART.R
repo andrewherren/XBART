@@ -121,7 +121,7 @@ predict_gp <- function(object, y, X, Xtest, theta = 10, tau = 5, p_categorical =
     out <- json_to_r(object$tree_json)
 
     num_trees <- dim(object$sigma)[1]
-    sigma <- as.matrix(object$sigma[num_trees, ])
+    sigma <- as.matrix(object$sigma)
 
     obj <- .Call(`_XBART_gp_predict`, y, X, Xtest, out$model_list$tree_pnt, object$residuals, sigma, theta, tau, p_categorical)
 

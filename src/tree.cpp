@@ -2129,62 +2129,112 @@ void tree::gp_predict_from_root(matrix<size_t> &Xorder_std, gp_struct &x_struct,
 
         // get local range
         matrix<double> local_X_range;
-        get_X_range(x_struct.X_std, Xorder_std, local_X_range, x_struct.n_y);
+        bool overlap{true};
+        // get_X_range(x_struct.X_std, Xorder_std, local_X_range, x_struct.n_y);
+        get_overlap(x_struct.X_std, xtest_struct.X_std, Xorder_std, Xtestorder_std, 
+                    local_X_range, x_struct.n_y, xtest_struct.n_y, overlap);
 
         // check out of range test sets
         // exterior points may not be out-of-range on all active variables
-        // do we want to use all acitve_var info or just those having out-of-range points?
+        // do we want to use all active_var info or just those having out-of-range points?
         // FOR NOW: just those having out-of-range points
+        size_t max_train_samples = 100;
+        size_t p_active;
+        std::vector<size_t> train_ind_cand;
+        std::vector<size_t> train_ind;
         std::vector<size_t> test_ind;
         std::vector<bool> active_var_out_range(p_continuous, false);
-        for (size_t i = 0; i < Ntest; i++)
+        bool in_range;
+        
+        if (overlap)
         {
-            for (size_t j = 0; j < p_continuous; j++)
+            // COUT << "Overlap in leaf" << endl;
+            for (size_t i = 0; i < Ntest; i++)
             {
-                if (active_var[j])
+                for (size_t j = 0; j < p_continuous; j++)
                 {
-                    if (*(xtest_struct.X_std + xtest_struct.n_y * j + Xtestorder_std[j][i]) > local_X_range[j][1])
+                    if (active_var[j])
                     {
-                        test_ind.push_back(Xtestorder_std[j][i]);
-                        active_var_out_range[j] = true;
-                        break;
-                    }
-                    else if (*(xtest_struct.X_std + xtest_struct.n_y * j + Xtestorder_std[j][i]) < local_X_range[j][0])
-                    {
-                        test_ind.push_back(Xtestorder_std[j][i]);
-                        active_var_out_range[j] = true;
-                        break;
+                        if (*(xtest_struct.X_std + xtest_struct.n_y * j + Xtestorder_std[j][i]) > local_X_range[j][1])
+                        {
+                            test_ind.push_back(Xtestorder_std[j][i]);
+                            active_var_out_range[j] = true;
+                            break;
+                        }
+                        else if (*(xtest_struct.X_std + xtest_struct.n_y * j + Xtestorder_std[j][i]) < local_X_range[j][0])
+                        {
+                            test_ind.push_back(Xtestorder_std[j][i]);
+                            active_var_out_range[j] = true;
+                            break;
+                        }
                     }
                 }
             }
-        }
-
-        // construct covariance matrix
-        // TODO: consider categorical active variables
-        size_t p_active = std::accumulate(active_var_out_range.begin(), active_var_out_range.end(), 0);
-        if (p_active == 0)
-        {
-            return;
-        }
-
-        Ntest = test_ind.size();
-        if (Ntest == 0)
-        {
-            return;
-        }
-
-        // get training set
-        std::vector<size_t> train_ind;
-        if (N < 100)
-        {
-            train_ind.resize(N);
-            std::copy(Xorder_std[0].begin(), Xorder_std[0].end(), train_ind.begin());
+        
+            // Determine the number of active features in the test set
+            p_active = std::accumulate(active_var_out_range.begin(), active_var_out_range.end(), 0);
+            if (p_active == 0)
+            {
+                return;
+            }
+            // If Ntest is 0, there is nothing to extrapolate in this leaf
+            Ntest = test_ind.size();
+            if (Ntest == 0)
+            {
+                return;
+            }
+            
+            // Get training set for the overlap region
+            for (size_t i = 0; i < N; i++)
+            {
+                in_range = true;
+                for (size_t j = 0; j < p_continuous; j++)
+                {
+                    if (active_var[j])
+                    {
+                        if (*(x_struct.X_std + x_struct.n_y * j + Xorder_std[j][i]) > local_X_range[j][1])
+                        {
+                            in_range = false;
+                        }
+                        else if (*(x_struct.X_std + x_struct.n_y * j + Xorder_std[j][i]) < local_X_range[j][0])
+                        {
+                            in_range = false;
+                        }
+                    }
+                }
+                if (in_range){
+                    train_ind_cand.push_back(Xorder_std[0][i]);
+                }
+            }
+            
+            // Downsize training set to max_train_samples if necessary
+            if (N < max_train_samples)
+            {
+                train_ind.resize(N);
+                std::copy(train_ind_cand.begin(), train_ind_cand.end(), train_ind.begin());
+            }
+            else
+            {
+                N = max_train_samples;
+                train_ind.resize(max_train_samples);
+                std::sample(train_ind_cand.begin(), train_ind_cand.end(), 
+                            train_ind.begin(), max_train_samples, x_struct.gen);
+            }
         }
         else
         {
-            N = 100;
-            train_ind.resize(100);
-            std::sample(Xorder_std[0].begin(), Xorder_std[0].end(), train_ind.begin(), 100, x_struct.gen);
+            // COUT << "No overlap in leaf" << endl;
+            // Sample test ind with prior
+            test_ind.resize(Ntest);
+            std::copy(Xtestorder_std[0].begin(), Xtestorder_std[0].end(), test_ind.begin());
+            N = 0;
+            // p_active should be determined by variables that have no overlap
+            for (size_t i = 0; i < p_continuous; i++){
+                if ((active_var[i]) & (local_X_range[i][1] <= local_X_range[i][0])) {
+                    active_var_out_range[i] = true;
+                }
+            }
+            p_active = std::accumulate(active_var_out_range.begin(), active_var_out_range.begin() + p_continuous, 0);
         }
 
         mat X(N + Ntest, p_active);
@@ -2237,6 +2287,7 @@ void tree::gp_predict_from_root(matrix<size_t> &Xorder_std, gp_struct &x_struct,
             resid(i, 0) = x_struct.resid[sweeps][tree_ind][train_ind[i]] - this->theta_vector[0];
         }
 
+        // COUT << "Extrapolating based on " << N << " control samples and " << Ntest << " treated samples" << endl;
         mat cov(N + Ntest, N + Ntest);
         get_rel_covariance(cov, X, x_range, theta, tau);
         
