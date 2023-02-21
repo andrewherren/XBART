@@ -82,6 +82,37 @@ predict.XBCFdiscrete <- function(object, X_con, X_mod, Z, pihat=NULL, burnin = 0
     return(obj)
 }
 
+predict.XBCFDiscreteProjectedResidual <- function(object, X_con, X_mod, Z, pihat=NULL, burnin = 0L, ...) {
+    
+    stopifnot("Propensity scores (pihat) must be provided by user for prediction."=!is.null(pihat))
+    
+    X_con <- as.matrix(cbind(pihat,X_con))
+    X_mod <- as.matrix(X_mod)
+    Z <- as.matrix(Z)
+    out_con <- json_to_r(object$tree_json_con)
+    out_mod <- json_to_r(object$tree_json_mod)
+    obj <- .Call("_XBART_XBCF_discrete_projected_residual_predict", X_con, X_mod, Z, out_con$model_list$tree_pnt, out_mod$model_list$tree_pnt)
+    
+    burnin <- burnin
+    sweeps <- nrow(object$a)
+    mus <- matrix(NA, nrow(X_con), sweeps)
+    taus <- matrix(NA, nrow(X_mod), sweeps)
+    seq <- c(1:sweeps)
+    for (i in seq) {
+        taus[, i] = obj$tau[,i] * object$sdy * (object$b[i,2] - object$b[i,1])
+        mus[, i] = obj$mu[,i] * object$sdy * (object$a[i]) + object$meany
+    }
+    
+    obj$tau.adj <- taus
+    obj$mu.adj <- mus
+    obj$yhats.adj <- Z[,1] * obj$tau.adj + obj$mu.adj
+    obj$tau.adj.mean <- rowMeans(obj$tau.adj[,(burnin+1):sweeps])
+    obj$mu.adj.mean <- rowMeans(obj$mu.adj[,(burnin+1):sweeps])
+    obj$yhats.adj.mean <- rowMeans(obj$yhats.adj[,(burnin+1):sweeps])
+    
+    return(obj)
+}
+
 predict_full <- function(object, X, ...) {
     out <- json_to_r(object$tree_json)
     obj <- .Call(`_XBART_xbart_predict_full`, X, object$model_list$y_mean, out$model_list$tree_pnt) # object$tree_pnt

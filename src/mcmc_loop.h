@@ -43,6 +43,25 @@ void mcmc_loop_xbcf_discrete(matrix<size_t> &Xorder_std_con,
                              X_struct &x_struct_con,
                              X_struct &x_struct_mod);
 
+// XBCF for discrete treatment
+void mcmc_loop_xbcf_discrete_projected_residual(
+        matrix<size_t> &Xorder_std_con,
+        matrix<size_t> &Xorder_std_mod,
+        bool verbose, matrix<double> &sigma0_draw_xinfo,
+        matrix<double> &sigma1_draw_xinfo,
+        matrix<double> &a_xinfo,
+        matrix<double> &b_xinfo,
+        matrix<double> &tau_con_xinfo,
+        matrix<double> &tau_mod_xinfo,
+        vector<vector<tree>> &trees_con,
+        vector<vector<tree>> &trees_mod,
+        double no_split_penalty,
+        XBCFDiscreteProjectedResidualState &state,
+        XBCFDiscreteProjectedResidualModel *model,
+        X_struct &x_struct_con,
+        X_struct &x_struct_mod
+);
+
 // XBART with heteroskedastic variance
 void mcmc_loop_heteroskedastic(matrix<size_t> &Xorder_std,
                     bool verbose,
