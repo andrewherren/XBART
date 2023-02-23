@@ -218,6 +218,133 @@ Rcpp::List XBCF_discrete_predict(mat X_con, mat X_mod, mat Z, Rcpp::XPtr<std::ve
 }
 
 // [[Rcpp::export]]
+Rcpp::List XBCF_discrete_propensity_shrinkage_predict(
+    mat X_con, mat X_mod, mat Z, mat pi_X_con, mat pi_X_mod, 
+    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_con, 
+    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_mod, 
+    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_con_pi, 
+    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_mod_pi)
+{
+    // size of data
+    size_t N = X_con.n_rows;
+    size_t p_con = X_con.n_cols;
+    size_t p_mod = X_mod.n_cols;
+    size_t p_con_pi = pi_X_con.n_cols;
+    size_t p_mod_pi = pi_X_mod.n_cols;
+    size_t p_z = Z.n_cols;
+    assert(X_con.n_rows == X_mod.n_rows);
+    
+    // Init X_std matrix
+    Rcpp::NumericMatrix X_std_con(N, p_con);
+    Rcpp::NumericMatrix X_std_mod(N, p_mod);
+    
+    // Init pi_X_std matrix
+    Rcpp::NumericMatrix pi_X_std_con(N, p_con_pi);
+    Rcpp::NumericMatrix pi_X_std_mod(N, p_mod_pi);
+    
+    matrix<double> Ztest_std;
+    ini_matrix(Ztest_std, N, p_z);
+    
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p_con; j++)
+        {
+            X_std_con(i, j) = X_con(i, j);
+        }
+        
+        for (size_t j = 0; j < p_mod; j++)
+        {
+            X_std_mod(i, j) = X_mod(i, j);
+        }
+        
+        for (size_t j = 0; j < p_con_pi; j++)
+        {
+            pi_X_std_con(i, j) = pi_X_con(i, j);
+        }
+        
+        for (size_t j = 0; j < p_mod_pi; j++)
+        {
+            pi_X_std_mod(i, j) = pi_X_mod(i, j);
+        }
+        
+        for (size_t j = 0; j < p_z; j++)
+        {
+            Ztest_std[j][i] = Z(i, j);
+        }
+    }
+    double *Xpointer_con = &X_std_con[0];
+    double *Xpointer_mod = &X_std_mod[0];
+    double *pi_Xpointer_con = &pi_X_std_con[0];
+    double *pi_Xpointer_mod = &pi_X_std_mod[0];
+    
+    // Trees
+    std::vector<std::vector<tree>> *trees_con = tree_con;
+    std::vector<std::vector<tree>> *trees_mod = tree_mod;
+    std::vector<std::vector<tree>> *trees_con_pi = tree_con_pi;
+    std::vector<std::vector<tree>> *trees_mod_pi = tree_mod_pi;
+    
+    // Result Container
+    size_t num_sweeps = (*trees_con).size();
+    size_t num_trees_con = (*trees_con)[0].size();
+    size_t num_trees_mod = (*trees_mod)[0].size();
+    size_t num_trees_con_pi = (*trees_con_pi)[0].size();
+    size_t num_trees_mod_pi = (*trees_mod_pi)[0].size();
+    
+    COUT << "number of trees " << num_trees_con << " " << num_trees_mod << endl;
+    
+    matrix<double> prognostic_xinfo;
+    ini_matrix(prognostic_xinfo, N, num_sweeps);
+    
+    matrix<double> treatment_xinfo;
+    ini_matrix(treatment_xinfo, N, num_sweeps);
+    
+    matrix<double> prognostic_pi_xinfo;
+    ini_matrix(prognostic_pi_xinfo, N, num_sweeps);
+    
+    matrix<double> treatment_pi_xinfo;
+    ini_matrix(treatment_pi_xinfo, N, num_sweeps);
+    
+    matrix<double> yhats_test_xinfo;
+    ini_xinfo(yhats_test_xinfo, N, num_sweeps);
+    XBCFDiscretePropensityShrinkageModel *model = new XBCFDiscretePropensityShrinkageModel();
+    
+    // Predict
+    model->predict_std(
+        Ztest_std, Xpointer_con, Xpointer_mod, pi_Xpointer_con, pi_Xpointer_mod, 
+        N, p_con, p_mod, p_con_pi, p_mod_pi, num_trees_con, num_trees_mod, 
+        num_trees_con_pi, num_trees_mod_pi, num_sweeps, yhats_test_xinfo, 
+        prognostic_xinfo, treatment_xinfo, prognostic_pi_xinfo, treatment_pi_xinfo, 
+        *trees_con, *trees_mod, *trees_con_pi, *trees_mod_pi
+    );
+    
+    // Convert back to Rcpp
+    Rcpp::NumericMatrix yhats(N, num_sweeps);
+    Rcpp::NumericMatrix prognostic(N, num_sweeps);
+    Rcpp::NumericMatrix treatment(N, num_sweeps);
+    Rcpp::NumericMatrix prognostic_pi(N, num_sweeps);
+    Rcpp::NumericMatrix treatment_pi(N, num_sweeps);
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < num_sweeps; j++)
+        {
+            yhats(i, j) = yhats_test_xinfo[j][i];
+            prognostic(i, j) = prognostic_xinfo[j][i];
+            treatment(i, j) = treatment_xinfo[j][i];
+            prognostic_pi(i, j) = prognostic_pi_xinfo[j][i];
+            treatment_pi(i, j) = treatment_pi_xinfo[j][i];
+        }
+    }
+    
+    return Rcpp::List::create(
+        Rcpp::Named("mu") = prognostic, 
+        Rcpp::Named("tau") = treatment, 
+        Rcpp::Named("mu_pi") = prognostic_pi, 
+        Rcpp::Named("tau_pi") = treatment_pi, 
+        Rcpp::Named("yhats") = yhats);
+}
+
+
+// [[Rcpp::export]]
 Rcpp::List xbart_predict_full(mat X, double y_mean, Rcpp::XPtr<std::vector<std::vector<tree>>> tree_pnt)
 {
 

@@ -336,6 +336,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// XBCF_discrete_propensity_shrinkage_predict
+Rcpp::List XBCF_discrete_propensity_shrinkage_predict(mat X_con, mat X_mod, mat Z, mat pi_X_con, mat pi_X_mod, Rcpp::XPtr<std::vector<std::vector<tree>>> tree_con, Rcpp::XPtr<std::vector<std::vector<tree>>> tree_mod, Rcpp::XPtr<std::vector<std::vector<tree>>> tree_con_pi, Rcpp::XPtr<std::vector<std::vector<tree>>> tree_mod_pi);
+RcppExport SEXP _XBART_XBCF_discrete_propensity_shrinkage_predict(SEXP X_conSEXP, SEXP X_modSEXP, SEXP ZSEXP, SEXP pi_X_conSEXP, SEXP pi_X_modSEXP, SEXP tree_conSEXP, SEXP tree_modSEXP, SEXP tree_con_piSEXP, SEXP tree_mod_piSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< mat >::type X_con(X_conSEXP);
+    Rcpp::traits::input_parameter< mat >::type X_mod(X_modSEXP);
+    Rcpp::traits::input_parameter< mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< mat >::type pi_X_con(pi_X_conSEXP);
+    Rcpp::traits::input_parameter< mat >::type pi_X_mod(pi_X_modSEXP);
+    Rcpp::traits::input_parameter< Rcpp::XPtr<std::vector<std::vector<tree>>> >::type tree_con(tree_conSEXP);
+    Rcpp::traits::input_parameter< Rcpp::XPtr<std::vector<std::vector<tree>>> >::type tree_mod(tree_modSEXP);
+    Rcpp::traits::input_parameter< Rcpp::XPtr<std::vector<std::vector<tree>>> >::type tree_con_pi(tree_con_piSEXP);
+    Rcpp::traits::input_parameter< Rcpp::XPtr<std::vector<std::vector<tree>>> >::type tree_mod_pi(tree_mod_piSEXP);
+    rcpp_result_gen = Rcpp::wrap(XBCF_discrete_propensity_shrinkage_predict(X_con, X_mod, Z, pi_X_con, pi_X_mod, tree_con, tree_mod, tree_con_pi, tree_mod_pi));
+    return rcpp_result_gen;
+END_RCPP
+}
 // xbart_predict_full
 Rcpp::List xbart_predict_full(mat X, double y_mean, Rcpp::XPtr<std::vector<std::vector<tree>>> tree_pnt);
 RcppExport SEXP _XBART_xbart_predict_full(SEXP XSEXP, SEXP y_meanSEXP, SEXP tree_pntSEXP) {
@@ -465,6 +484,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_XBART_xbart_predict", (DL_FUNC) &_XBART_xbart_predict, 3},
     {"_XBART_XBCF_continuous_predict", (DL_FUNC) &_XBART_XBCF_continuous_predict, 5},
     {"_XBART_XBCF_discrete_predict", (DL_FUNC) &_XBART_XBCF_discrete_predict, 5},
+    {"_XBART_XBCF_discrete_propensity_shrinkage_predict", (DL_FUNC) &_XBART_XBCF_discrete_propensity_shrinkage_predict, 9},
     {"_XBART_xbart_predict_full", (DL_FUNC) &_XBART_xbart_predict_full, 3},
     {"_XBART_gp_predict", (DL_FUNC) &_XBART_gp_predict, 9},
     {"_XBART_xbart_multinomial_predict", (DL_FUNC) &_XBART_xbart_multinomial_predict, 4},

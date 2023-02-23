@@ -43,6 +43,35 @@ void mcmc_loop_xbcf_discrete(matrix<size_t> &Xorder_std_con,
                              X_struct &x_struct_con,
                              X_struct &x_struct_mod);
 
+// XBCF for discrete treatment with propensity shrinkage
+void mcmc_loop_xbcf_discrete_propensity_shrinkage(
+        matrix<size_t> &Xorder_std_con,
+        matrix<size_t> &Xorder_std_mod,
+        matrix<size_t> &pi_Xorder_std_con,
+        matrix<size_t> &pi_Xorder_std_mod,
+        bool verbose, matrix<double> &sigma0_draw_xinfo,
+        matrix<double> &sigma1_draw_xinfo,
+        matrix<double> &a_xinfo,
+        matrix<double> &b_xinfo,
+        matrix<double> &a_pi_xinfo,
+        matrix<double> &b_pi_xinfo,
+        matrix<double> &tau_con_xinfo,
+        matrix<double> &tau_mod_xinfo,
+        matrix<double> &tau_con_pi_xinfo,
+        matrix<double> &tau_mod_pi_xinfo,
+        vector<vector<tree>> &trees_con,
+        vector<vector<tree>> &trees_mod,
+        vector<vector<tree>> &trees_con_pi,
+        vector<vector<tree>> &trees_mod_pi,
+        double no_split_penalty,
+        State &state,
+        XBCFDiscretePropensityShrinkageModel *model,
+        X_struct &x_struct_con,
+        X_struct &x_struct_mod,
+        X_struct &x_struct_con_pi,
+        X_struct &x_struct_mod_pi
+);
+
 // XBART with heteroskedastic variance
 void mcmc_loop_heteroskedastic(matrix<size_t> &Xorder_std,
                     bool verbose,

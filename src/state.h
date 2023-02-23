@@ -127,7 +127,33 @@ public:
     size_t N_trt;
     size_t N_ctrl;
 
-
+    // extra variables for propensity shrinkage BCF
+    std::vector<double> b_vec_pi;
+    double a_pi;
+    matrix<double> *split_count_all_tree_con_pi;
+    std::vector<double> *split_count_all_con_pi;
+    std::vector<double> *mtry_weight_current_tree_con_pi;
+    matrix<double> *split_count_all_tree_mod_pi;
+    std::vector<double> *split_count_all_mod_pi;
+    std::vector<double> *mtry_weight_current_tree_mod_pi;
+    const double *pi_X_std_con;
+    const double *pi_X_std_mod;
+    std::vector<double> *tau_pi_fit;
+    std::vector<double> *mu_pi_fit;
+    bool propensity_flag;
+    matrix<size_t> *pi_Xorder_std_con;
+    matrix<size_t> *pi_Xorder_std_mod;
+    size_t p_con_pi;
+    size_t p_mod_pi;
+    size_t p_categorical_con_pi;
+    size_t p_categorical_mod_pi;
+    size_t p_continuous_con_pi;
+    size_t p_continuous_mod_pi;
+    size_t mtry_con_pi;
+    size_t mtry_mod_pi;
+    size_t num_trees_con_pi;
+    size_t num_trees_mod_pi;
+    
     void update_sigma(double sigma)
     {
         this->sigma = sigma;
@@ -341,6 +367,101 @@ public:
         this->sigma_vec.resize(2);
         this->sigma_vec[0] = 1;
         this->sigma_vec[1] = 1;
+    }
+};
+
+class XBCFDiscretePropensityShrinkageState : public State
+{
+public:
+    XBCFDiscretePropensityShrinkageState(
+        matrix<double> *Z_std, const double *Xpointer_con, const double *Xpointer_mod, 
+        matrix<size_t> &Xorder_std_con, matrix<size_t> &Xorder_std_mod, 
+        const double *pi_Xpointer_con, const double *pi_Xpointer_mod, 
+        matrix<size_t> &pi_Xorder_std_con, matrix<size_t> &pi_Xorder_std_mod, 
+        size_t N, size_t p_con, size_t p_mod, size_t num_trees_con, size_t num_trees_mod, 
+        size_t p_con_pi, size_t p_mod_pi, size_t num_trees_con_pi, size_t num_trees_mod_pi, 
+        size_t p_categorical_con, size_t p_categorical_mod, 
+        size_t p_continuous_con, size_t p_continuous_mod, 
+        size_t p_categorical_con_pi, size_t p_categorical_mod_pi, 
+        size_t p_continuous_con_pi, size_t p_continuous_mod_pi, 
+        bool set_random_seed, size_t random_seed, size_t n_min, size_t n_cutpoints, 
+        size_t mtry_con, size_t mtry_mod, size_t mtry_con_pi, size_t mtry_mod_pi, size_t num_sweeps, bool sample_weights, 
+        std::vector<double> *y_std, double sigma, size_t max_depth, double ini_var_yhat, 
+        size_t burnin, size_t dim_residual, size_t nthread, bool parallel, 
+        bool a_scaling, bool b_scaling, size_t N_trt, size_t N_ctrl
+    ) : State(
+            Xpointer_con, Xorder_std_con, N, p_con, num_trees_con, 
+            p_categorical_con, p_continuous_con, set_random_seed, random_seed, 
+            n_min, n_cutpoints, mtry_con, Xpointer_con, num_sweeps, sample_weights, 
+            y_std, sigma, max_depth, ini_var_yhat, burnin, dim_residual, nthread
+    ){
+        this->X_std_con = Xpointer_con;
+        this->X_std_mod = Xpointer_mod;
+        this->pi_X_std_con = pi_Xpointer_con;
+        this->pi_X_std_mod = pi_Xpointer_mod;
+        this->split_count_all_tree_con = new matrix<double>();
+        this->split_count_all_tree_mod = new matrix<double>();
+        this->split_count_all_tree_con_pi = new matrix<double>();
+        this->split_count_all_tree_mod_pi = new matrix<double>();
+        ini_xinfo((*this->split_count_all_tree_con), p_con, num_trees_con);
+        ini_xinfo((*this->split_count_all_tree_mod), p_mod, num_trees_mod);
+        ini_xinfo((*this->split_count_all_tree_con_pi), p_con_pi, num_trees_con_pi);
+        ini_xinfo((*this->split_count_all_tree_mod_pi), p_mod_pi, num_trees_mod_pi);
+        this->split_count_all_con = new std::vector<double>(p_con, 0);
+        this->mtry_weight_current_tree_con = new std::vector<double>(p_con, 0);
+        this->split_count_all_mod = new std::vector<double>(p_mod, 0);
+        this->mtry_weight_current_tree_mod = new std::vector<double>(p_mod, 0);
+        this->split_count_all_con_pi = new std::vector<double>(p_con_pi, 0);
+        this->mtry_weight_current_tree_con_pi = new std::vector<double>(p_con_pi, 0);
+        this->split_count_all_mod_pi = new std::vector<double>(p_mod_pi, 0);
+        this->mtry_weight_current_tree_mod_pi = new std::vector<double>(p_mod_pi, 0);
+        this->Z_std = Z_std;
+        this->sigma = sigma;
+        this->sigma2 = pow(sigma, 2);
+        this->parallel = parallel;
+        this->tau_fit = (new std::vector<double>(N, 0));
+        this->mu_fit = (new std::vector<double>(N, 0));
+        this->tau_pi_fit = (new std::vector<double>(N, 0));
+        this->mu_pi_fit = (new std::vector<double>(N, 0));
+        this->Xorder_std_con = &Xorder_std_con;
+        this->Xorder_std_mod = &Xorder_std_mod;
+        this->pi_Xorder_std_con = &pi_Xorder_std_con;
+        this->pi_Xorder_std_mod = &pi_Xorder_std_mod;
+        this->p_con = p_con;
+        this->p_mod = p_mod;
+        this->p_con_pi = p_con_pi;
+        this->p_mod_pi = p_mod_pi;
+        this->p_categorical_con = p_categorical_con;
+        this->p_categorical_mod = p_categorical_mod;
+        this->p_continuous_con = p_continuous_con;
+        this->p_continuous_mod = p_continuous_mod;
+        this->mtry_con = mtry_con;
+        this->mtry_mod = mtry_mod;
+        this->p_categorical_con_pi = p_categorical_con_pi;
+        this->p_categorical_mod_pi = p_categorical_mod_pi;
+        this->p_continuous_con_pi = p_continuous_con_pi;
+        this->p_continuous_mod_pi = p_continuous_mod_pi;
+        this->mtry_con_pi = mtry_con_pi;
+        this->mtry_mod_pi = mtry_mod_pi;
+        this->num_trees_con = num_trees_con;
+        this->num_trees_mod = num_trees_mod;
+        this->num_trees_con_pi = num_trees_con_pi;
+        this->num_trees_mod_pi = num_trees_mod_pi;
+        this->a_scaling = a_scaling;
+        this->b_scaling = b_scaling;
+        this->N_trt = N_trt;
+        this->N_ctrl = N_ctrl;
+        this->a = 1.0;
+        this->b_vec.resize(2);
+        this->b_vec[0] = -0.5;
+        this->b_vec[1] = 0.5;
+        this->sigma_vec.resize(2);
+        this->sigma_vec[0] = 1;
+        this->sigma_vec[1] = 1;
+        this->a_pi = 1.0;
+        this->b_vec_pi.resize(2);
+        this->b_vec_pi[0] = -0.5;
+        this->b_vec_pi[1] = 0.5;
     }
 };
 

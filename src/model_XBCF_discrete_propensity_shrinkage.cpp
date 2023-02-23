@@ -12,37 +12,45 @@
 
 void XBCFDiscretePropensityShrinkageModel::incSuffStat(State &state, size_t index_next_obs, std::vector<double> &suffstats)
 {
-    if (state.treatment_flag)
+    if ((*state.Z_std)[0][index_next_obs] == 1)
     {
-        // treatment forest
-        if ((*state.Z_std)[0][index_next_obs] == 1)
+        if (state.treatment_flag & state.propensity_flag)
         {
-            // if treated
-            suffstats[1] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.b_vec[1] * (*state.tau_fit)[index_next_obs]) / state.b_vec[1];
-            suffstats[3] += 1;
+            suffstats[1] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[1] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[1] * (*state.tau_pi_fit)[index_next_obs]) / state.b_vec_pi[1];
+        }
+        else if (state.treatment_flag & !state.propensity_flag)
+        {
+            suffstats[1] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[1] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[1] * (*state.tau_pi_fit)[index_next_obs]) / state.b_vec[1];
+        }
+        else if (!state.treatment_flag & state.propensity_flag)
+        {
+            suffstats[1] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[1] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[1] * (*state.tau_pi_fit)[index_next_obs]) / state.a_pi;
         }
         else
         {
-            // if control group
-            suffstats[0] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.b_vec[0] * (*state.tau_fit)[index_next_obs]) / state.b_vec[0];
-            suffstats[2] += 1;
+            suffstats[1] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[1] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[1] * (*state.tau_pi_fit)[index_next_obs]) / state.a;
         }
+        suffstats[3] += 1;
     }
     else
     {
-        // prognostic forest
-        if ((*state.Z_std)[0][index_next_obs] == 1)
+        if (state.treatment_flag & state.propensity_flag)
         {
-            // if treated
-            suffstats[1] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.b_vec[1] * (*state.tau_fit)[index_next_obs]) / state.a;
-            suffstats[3] += 1;
+            suffstats[0] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[0] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[0] * (*state.tau_pi_fit)[index_next_obs]) / state.b_vec_pi[0];
+        }
+        else if (state.treatment_flag & !state.propensity_flag)
+        {
+            suffstats[0] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[0] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[0] * (*state.tau_pi_fit)[index_next_obs]) / state.b_vec[0];
+        }
+        else if (!state.treatment_flag & state.propensity_flag)
+        {
+            suffstats[0] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[0] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[0] * (*state.tau_pi_fit)[index_next_obs]) / state.a_pi;
         }
         else
         {
-            // if control group
-            suffstats[0] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.b_vec[0] * (*state.tau_fit)[index_next_obs]) / state.a;
-            suffstats[2] += 1;
+            suffstats[0] += ((*state.y_std)[index_next_obs] - state.a * (*state.mu_fit)[index_next_obs] - state.a_pi * (*state.mu_pi_fit)[index_next_obs] - state.b_vec[0] * (*state.tau_fit)[index_next_obs] - state.b_vec_pi[0] * (*state.tau_pi_fit)[index_next_obs]) / state.a;
         }
+        suffstats[2] += 1;
     }
     return;
 }
@@ -53,9 +61,17 @@ void XBCFDiscretePropensityShrinkageModel::samplePars(State &state, std::vector<
 
     double tau_use;
 
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        tau_use = tau_mod_pi;
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         tau_use = tau_mod;
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        tau_use = tau_con_pi;
     }
     else
     {
@@ -65,10 +81,20 @@ void XBCFDiscretePropensityShrinkageModel::samplePars(State &state, std::vector<
     double s0 = 0;
     double s1 = 0;
 
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        s0 = state.sigma_vec[0] / fabs(state.b_vec_pi[0]);
+        s1 = state.sigma_vec[1] / fabs(state.b_vec_pi[1]);
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         s0 = state.sigma_vec[0] / fabs(state.b_vec[0]);
         s1 = state.sigma_vec[1] / fabs(state.b_vec[1]);
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        s0 = state.sigma_vec[0] / fabs(state.a_pi);
+        s1 = state.sigma_vec[1] / fabs(state.a_pi);
     }
     else
     {
@@ -110,13 +136,13 @@ void XBCFDiscretePropensityShrinkageModel::update_state(State &state, size_t tre
         if ((*state.Z_std)[0][i] == 1)
         {
             // if treated
-            full_residual_trt[index_trt] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.b_vec[1] * (*state.tau_fit)[i];
+            full_residual_trt[index_trt] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - state.b_vec[1] * (*state.tau_fit)[i] - state.b_vec_pi[1] * (*state.tau_pi_fit)[i];
             index_trt++;
         }
         else
         {
             // if control group
-            full_residual_ctrl[index_ctrl] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.b_vec[0] * (*state.tau_fit)[i];
+            full_residual_ctrl[index_ctrl] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - state.b_vec[0] * (*state.tau_fit)[i] - state.b_vec_pi[0] * (*state.tau_pi_fit)[i];
             index_ctrl++;
         }
     }
@@ -151,17 +177,45 @@ void XBCFDiscretePropensityShrinkageModel::update_tau(State &state, size_t tree_
         sum_squared = sum_squared + pow(leaf_nodes[i]->theta_vector[0], 2);
     }
 
-    double kap = (state.treatment_flag) ? this->tau_mod_kap : this->tau_con_kap;
-
-    double s = (state.treatment_flag) ? this->tau_mod_s * this->tau_mod_mean : this->tau_con_s * this->tau_con_mean;
-
+    double kap;
+    double s;
+    
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        kap = this->tau_mod_pi_kap;
+        s = this->tau_mod_pi_s * this->tau_mod_pi_mean;
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
+    {
+        kap = this->tau_mod_kap;
+        s = this->tau_mod_s * this->tau_mod_mean;
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        kap = this->tau_con_pi_kap;
+        s = this->tau_con_pi_s * this->tau_con_pi_mean;
+    }
+    else
+    {
+        kap = this->tau_con_kap;
+        s = this->tau_con_s * this->tau_con_mean;
+    }
+    
     std::gamma_distribution<double> gamma_samp((leaf_nodes.size() + kap) / 2.0, 2.0 / (sum_squared + s));
 
     double tau_sample = 1.0 / gamma_samp(state.gen);
 
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        this->tau_mod_pi = tau_sample;
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         this->tau_mod = tau_sample;
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        this->tau_con_pi = tau_sample;
     }
     else
     {
@@ -184,21 +238,47 @@ void XBCFDiscretePropensityShrinkageModel::update_tau_per_forest(State &state, s
         sum_squared = sum_squared + pow(leaf_nodes[i]->theta_vector[0], 2);
     };
 
-    double kap = (state.treatment_flag) ? this->tau_mod_kap : this->tau_con_kap;
-
-    double s = (state.treatment_flag) ? this->tau_mod_s * this->tau_mod_mean : this->tau_con_s * this->tau_con_mean;
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        kap = this->tau_mod_pi_kap;
+        s = this->tau_mod_pi_s * this->tau_mod_pi_mean;
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
+    {
+        kap = this->tau_mod_kap;
+        s = this->tau_mod_s * this->tau_mod_mean;
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        kap = this->tau_con_pi_kap;
+        s = this->tau_con_pi_s * this->tau_con_pi_mean;
+    }
+    else
+    {
+        kap = this->tau_con_kap;
+        s = this->tau_con_s * this->tau_con_mean;
+    }
 
     std::gamma_distribution<double> gamma_samp((leaf_nodes.size() + kap) / 2.0, 2.0 / (sum_squared + s));
     double tau_sample = 1.0 / gamma_samp(state.gen);
 
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        this->tau_mod_pi = tau_sample;
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         this->tau_mod = tau_sample;
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        this->tau_con_pi = tau_sample;
     }
     else
     {
         this->tau_con = tau_sample;
     }
+    
     return;
 }
 
@@ -242,9 +322,17 @@ double XBCFDiscretePropensityShrinkageModel::likelihood(std::vector<double> &tem
 
     double tau_use;
 
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        tau_use = tau_mod_pi;
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         tau_use = tau_mod;
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        tau_use = tau_con_pi;
     }
     else
     {
@@ -256,11 +344,20 @@ double XBCFDiscretePropensityShrinkageModel::likelihood(std::vector<double> &tem
     double denominator;   // the denominator (1 + tau * precision_squared) is the same for both terms
     double s_psi_squared; // (residual * precision_squared)^2
 
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
     {
-        // if this is treatment forest
+        s0 = state.sigma_vec[0] / fabs(state.b_vec_pi[0]);
+        s1 = state.sigma_vec[1] / fabs(state.b_vec_pi[1]);
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
+    {
         s0 = state.sigma_vec[0] / fabs(state.b_vec[0]);
         s1 = state.sigma_vec[1] / fabs(state.b_vec[1]);
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        s0 = state.sigma_vec[0] / fabs(state.a_pi);
+        s1 = state.sigma_vec[1] / fabs(state.a_pi);
     }
     else
     {
@@ -293,26 +390,42 @@ void XBCFDiscretePropensityShrinkageModel::ini_residual_std(State &state)
 {
     // initialize the vector of full residuals
     double b_value;
+    double b_value_pi;
     for (size_t i = 0; i < (*state.residual_std)[0].size(); i++)
     {
         b_value = ((*state.Z_std)[0][i] == 1) ? state.b_vec[1] : state.b_vec[0];
+        b_value_pi = ((*state.Z_std)[0][i] == 1) ? state.b_vec_pi[1] : state.b_vec_pi[0];
 
-        (*state.residual_std)[0][i] = (*state.y_std)[i] - (state.a) * (*state.mu_fit)[i] - b_value * (*state.tau_fit)[i];
+        (*state.residual_std)[0][i] = (*state.y_std)[i] - (state.a) * (*state.mu_fit)[i] - (state.a_pi) * (*state.mu_pi_fit)[i] - b_value * (*state.tau_fit)[i] - b_value_pi * (*state.tau_pi_fit)[i];
     }
     return;
 }
 
-void XBCFDiscretePropensityShrinkageModel::predict_std(matrix<double> &Ztestpointer, const double *Xtestpointer_con, const double *Xtestpointer_mod, size_t N_test, size_t p_con, size_t p_mod, size_t num_trees_con, size_t num_trees_mod, size_t num_sweeps, matrix<double> &yhats_test_xinfo, matrix<double> &prognostic_xinfo, matrix<double> &treatment_xinfo, vector<vector<tree>> &trees_con, vector<vector<tree>> &trees_mod)
-{
+void XBCFDiscretePropensityShrinkageModel::predict_std(
+        matrix<double> &Ztestpointer, const double *Xtestpointer_con, const double *Xtestpointer_mod, 
+        const double *pi_Xtestpointer_con, const double *pi_Xtestpointer_mod, 
+        size_t N_test, size_t p_con, size_t p_mod, size_t p_con_pi, size_t p_mod_pi, 
+        size_t num_trees_con, size_t num_trees_mod, size_t num_trees_con_pi, size_t num_trees_mod_pi, 
+        size_t num_sweeps, matrix<double> &yhats_test_xinfo, 
+        matrix<double> &prognostic_xinfo, matrix<double> &treatment_xinfo, 
+        matrix<double> &prognostic_pi_xinfo, matrix<double> &treatment_pi_xinfo, 
+        vector<vector<tree>> &trees_con, vector<vector<tree>> &trees_mod, 
+        vector<vector<tree>> &trees_con_pi, vector<vector<tree>> &trees_mod_pi
+){
     // predict the output as a matrix
-    matrix<double> output_mod;
-
     // row : dimension of theta, column : number of trees
+    matrix<double> output_mod;
     ini_matrix(output_mod, this->dim_theta, trees_mod[0].size());
 
     matrix<double> output_con;
     ini_matrix(output_con, this->dim_theta, trees_con[0].size());
 
+    matrix<double> output_mod_pi;
+    ini_matrix(output_mod_pi, this->dim_theta, trees_mod_pi[0].size());
+    
+    matrix<double> output_con_pi;
+    ini_matrix(output_con_pi, this->dim_theta, trees_con_pi[0].size());
+    
     for (size_t sweeps = 0; sweeps < num_sweeps; sweeps++)
     {
         for (size_t data_ind = 0; data_ind < N_test; data_ind++)
@@ -320,27 +433,33 @@ void XBCFDiscretePropensityShrinkageModel::predict_std(matrix<double> &Ztestpoin
             getThetaForObs_Outsample(output_mod, trees_mod[sweeps], data_ind, Xtestpointer_mod, N_test, p_mod);
 
             getThetaForObs_Outsample(output_con, trees_con[sweeps], data_ind, Xtestpointer_con, N_test, p_con);
+            
+            getThetaForObs_Outsample(output_mod_pi, trees_mod_pi[sweeps], data_ind, pi_Xtestpointer_mod, N_test, p_mod_pi);
+            
+            getThetaForObs_Outsample(output_con_pi, trees_con_pi[sweeps], data_ind, pi_Xtestpointer_con, N_test, p_con_pi);
 
             // take sum of predictions of each tree, as final prediction
             for (size_t i = 0; i < trees_mod[0].size(); i++)
             {
                 treatment_xinfo[sweeps][data_ind] += output_mod[i][0];
             }
+            
+            for (size_t i = 0; i < trees_mod_pi[0].size(); i++)
+            {
+                treatment_pi_xinfo[sweeps][data_ind] += output_mod_pi[i][0];
+            }
 
             for (size_t i = 0; i < trees_con[0].size(); i++)
             {
                 prognostic_xinfo[sweeps][data_ind] += output_con[i][0];
             }
+            
+            for (size_t i = 0; i < trees_con_pi[0].size(); i++)
+            {
+                prognostic_pi_xinfo[sweeps][data_ind] += output_con_pi[i][0];
+            }
 
-            if (Ztestpointer[0][data_ind] == 1)
-            {
-                // yhats_test_xinfo[sweeps][data_ind] = (state.a) * prognostic_xinfo[sweeps][data_ind] + (state.b_vec[1]) * treatment_xinfo[sweeps][data_ind];
-            }
-            else
-            {
-                // yhats_test_xinfo[sweeps][data_ind] = (state.a) * prognostic_xinfo[sweeps][data_ind] + (state.b_vec[0]) * treatment_xinfo[sweeps][data_ind];
-            }
-            yhats_test_xinfo[sweeps][data_ind] = prognostic_xinfo[sweeps][data_ind] + treatment_xinfo[sweeps][data_ind];
+            yhats_test_xinfo[sweeps][data_ind] = prognostic_xinfo[sweeps][data_ind] + prognostic_pi_xinfo[sweeps][data_ind] + treatment_xinfo[sweeps][data_ind] + treatment_pi_xinfo[sweeps][data_ind];
         }
     }
     return;
@@ -353,16 +472,30 @@ void XBCFDiscretePropensityShrinkageModel::ini_tau_mu_fit(State &state)
     {
         (*state.mu_fit)[i] = 0;
         (*state.tau_fit)[i] = value;
+        (*state.mu_pi_fit)[i] = 0;
+        (*state.tau_pi_fit)[i] = value;
     }
     return;
 }
 
-void XBCFDiscretePropensityShrinkageModel::set_treatmentflag(State &state, bool value)
+void XBCFDiscretePropensityShrinkageModel::set_flags(State &state, bool treatment, bool propensity)
 {
-    state.treatment_flag = value;
-    if (value)
+    state.treatment_flag = treatment;
+    state.propensity_flag = propensity;
+    if (treatment & propensity)
     {
-        // if treatment forest
+        state.p = state.p_mod_pi;
+        state.p_categorical = state.p_categorical_mod_pi;
+        state.p_continuous = state.p_continuous_mod_pi;
+        state.Xorder_std = state.pi_Xorder_std_mod;
+        state.mtry = state.mtry_mod_pi;
+        state.num_trees = state.num_trees_mod_pi;
+        state.X_std = state.pi_X_std_mod;
+        this->alpha = this->alpha_mod_pi;
+        this->beta = this->beta_mod_pi;
+    }
+    else if (treatment & !propensity)
+    {
         state.p = state.p_mod;
         state.p_categorical = state.p_categorical_mod;
         state.p_continuous = state.p_continuous_mod;
@@ -372,6 +505,18 @@ void XBCFDiscretePropensityShrinkageModel::set_treatmentflag(State &state, bool 
         state.X_std = state.X_std_mod;
         this->alpha = this->alpha_mod;
         this->beta = this->beta_mod;
+    }
+    else if (!treatment & propensity)
+    {
+        state.p = state.p_con_pi;
+        state.p_categorical = state.p_categorical_con_pi;
+        state.p_continuous = state.p_continuous_con_pi;
+        state.Xorder_std = state.pi_Xorder_std_con;
+        state.mtry = state.mtry_con_pi;
+        state.num_trees = state.num_trees_con_pi;
+        state.X_std = state.pi_X_std_con;
+        this->alpha = this->alpha_con_pi;
+        this->beta = this->beta_con_pi;
     }
     else
     {
@@ -390,11 +535,25 @@ void XBCFDiscretePropensityShrinkageModel::set_treatmentflag(State &state, bool 
 
 void XBCFDiscretePropensityShrinkageModel::subtract_old_tree_fit(size_t tree_ind, State &state, X_struct &x_struct)
 {
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        for (size_t i = 0; i < (*state.tau_pi_fit).size(); i++)
+        {
+            (*state.tau_pi_fit)[i] -= (*(x_struct.data_pointers[tree_ind][i]))[0];
+        }
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         for (size_t i = 0; i < (*state.tau_fit).size(); i++)
         {
             (*state.tau_fit)[i] -= (*(x_struct.data_pointers[tree_ind][i]))[0];
+        }
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        for (size_t i = 0; i < (*state.mu_pi_fit).size(); i++)
+        {
+            (*state.mu_pi_fit)[i] -= (*(x_struct.data_pointers[tree_ind][i]))[0];
         }
     }
     else
@@ -404,17 +563,32 @@ void XBCFDiscretePropensityShrinkageModel::subtract_old_tree_fit(size_t tree_ind
             (*state.mu_fit)[i] -= (*(x_struct.data_pointers[tree_ind][i]))[0];
         }
     }
+    
     return;
 }
 
 void XBCFDiscretePropensityShrinkageModel::add_new_tree_fit(size_t tree_ind, State &state, X_struct &x_struct)
 {
 
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        for (size_t i = 0; i < (*state.tau_pi_fit).size(); i++)
+        {
+            (*state.tau_pi_fit)[i] += (*(x_struct.data_pointers[tree_ind][i]))[0];
+        }
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         for (size_t i = 0; i < (*state.tau_fit).size(); i++)
         {
             (*state.tau_fit)[i] += (*(x_struct.data_pointers[tree_ind][i]))[0];
+        }
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        for (size_t i = 0; i < (*state.mu_pi_fit).size(); i++)
+        {
+            (*state.mu_pi_fit)[i] += (*(x_struct.data_pointers[tree_ind][i]))[0];
         }
     }
     else
@@ -429,35 +603,59 @@ void XBCFDiscretePropensityShrinkageModel::add_new_tree_fit(size_t tree_ind, Sta
 
 void XBCFDiscretePropensityShrinkageModel::update_partial_residuals(size_t tree_ind, State &state, X_struct &x_struct)
 {
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
     {
-        // treatment forest
-        // (y - a * mu - b * tau) / b
         for (size_t i = 0; i < (*state.tau_fit).size(); i++)
         {
             if ((*state.Z_std)[0][i] == 1)
             {
-                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i]) / (state.b_vec[1]);
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i] - (state.b_vec_pi[1]) * (*state.tau_pi_fit)[i]) / (state.b_vec_pi[1]);
             }
             else
             {
-                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - (state.b_vec[0]) * (*state.tau_fit)[i]) / (state.b_vec[0]);
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[0]) * (*state.tau_fit)[i] - (state.b_vec_pi[0]) * (*state.tau_pi_fit)[i]) / (state.b_vec_pi[0]);
+            }
+        }
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
+    {
+        for (size_t i = 0; i < (*state.tau_fit).size(); i++)
+        {
+            if ((*state.Z_std)[0][i] == 1)
+            {
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i] - (state.b_vec_pi[1]) * (*state.tau_pi_fit)[i]) / (state.b_vec[1]);
+            }
+            else
+            {
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i] - (state.b_vec_pi[1]) * (*state.tau_pi_fit)[i]) / (state.b_vec[0]);
+            }
+        }
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        for (size_t i = 0; i < (*state.tau_fit).size(); i++)
+        {
+            if ((*state.Z_std)[0][i] == 1)
+            {
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i] - (state.b_vec_pi[1]) * (*state.tau_pi_fit)[i]) / (state.a_pi);
+            }
+            else
+            {
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i] - (state.b_vec_pi[1]) * (*state.tau_pi_fit)[i]) / (state.a_pi);
             }
         }
     }
     else
     {
-        // prognostic forest
-        // (y - a * mu - b * tau) / a
         for (size_t i = 0; i < (*state.tau_fit).size(); i++)
         {
             if ((*state.Z_std)[0][i] == 1)
             {
-                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i]) / (state.a);
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i] - (state.b_vec_pi[1]) * (*state.tau_pi_fit)[i]) / (state.a);
             }
             else
             {
-                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - (state.b_vec[0]) * (*state.tau_fit)[i]) / (state.a);
+                ((*state.residual_std))[0][i] = ((*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (state.b_vec[1]) * (*state.tau_fit)[i] - (state.b_vec_pi[1]) * (*state.tau_pi_fit)[i]) / (state.a);
             }
         }
     }
@@ -466,10 +664,20 @@ void XBCFDiscretePropensityShrinkageModel::update_partial_residuals(size_t tree_
 
 void XBCFDiscretePropensityShrinkageModel::update_split_counts(State &state, size_t tree_ind)
 {
-    if (state.treatment_flag)
+    if (state.treatment_flag & state.propensity_flag)
+    {
+        (*state.mtry_weight_current_tree_mod_pi) = (*state.mtry_weight_current_tree_mod_pi) + (*state.split_count_current_tree);
+        (*state.split_count_all_tree_mod_pi)[tree_ind] = (*state.split_count_current_tree);
+    }
+    else if (state.treatment_flag & !state.propensity_flag)
     {
         (*state.mtry_weight_current_tree_mod) = (*state.mtry_weight_current_tree_mod) + (*state.split_count_current_tree);
         (*state.split_count_all_tree_mod)[tree_ind] = (*state.split_count_current_tree);
+    }
+    else if (!state.treatment_flag & state.propensity_flag)
+    {
+        (*state.mtry_weight_current_tree_con_pi) = (*state.mtry_weight_current_tree_con_pi) + (*state.split_count_current_tree);
+        (*state.split_count_all_tree_con_pi)[tree_ind] = (*state.split_count_current_tree);
     }
     else
     {
@@ -497,11 +705,11 @@ void XBCFDiscretePropensityShrinkageModel::update_a(State &state)
         if ((*state.Z_std)[0][i] == 1)
         {
             // if treated
-            (*state.residual_std)[0][i] = (*state.y_std)[i] - (*state.tau_fit)[i] * state.b_vec[1];
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (*state.tau_fit)[i] * state.b_vec[1] - (*state.tau_pi_fit)[i] * state.b_vec_pi[1];
         }
         else
         {
-            (*state.residual_std)[0][i] = (*state.y_std)[i] - (*state.tau_fit)[i] * state.b_vec[0];
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (*state.tau_fit)[i] * state.b_vec[0] - (*state.tau_pi_fit)[i] * state.b_vec_pi[0];
         }
     }
     for (size_t i = 0; i < state.n_y; i++)
@@ -543,7 +751,15 @@ void XBCFDiscretePropensityShrinkageModel::update_b(State &state)
     // compute the residual y-a*mu(x) using state's objects y_std, mu_fit and a
     for (size_t i = 0; i < state.n_y; i++)
     {
-        (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i];
+        if ((*state.Z_std)[0][i] == 1)
+        {
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (*state.tau_pi_fit)[i] * state.b_vec_pi[1];
+        }
+        else
+        {
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (*state.tau_pi_fit)[i] * state.b_vec_pi[0];
+        }
+        
     }
 
     for (size_t i = 0; i < state.n_y; i++)
@@ -576,4 +792,110 @@ void XBCFDiscretePropensityShrinkageModel::update_b(State &state)
 
     return;
 }
- 
+
+void XBCFDiscretePropensityShrinkageModel::update_a_pi(State &state)
+{
+    // update parameter a, y = a * mu + b_z * tau
+    
+    std::normal_distribution<double> normal_samp(0.0, 1.0);
+    
+    double mu2sum_ctrl = 0;
+    double mu2sum_trt = 0;
+    double muressum_ctrl = 0;
+    double muressum_trt = 0;
+    
+    // compute the residual y - b * tau(x)
+    
+    for (size_t i = 0; i < state.n_y; i++)
+    {
+        if ((*state.Z_std)[0][i] == 1)
+        {
+            // if treated
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - (*state.tau_fit)[i] * state.b_vec[1] - (*state.tau_pi_fit)[i] * state.b_vec_pi[1];
+        }
+        else
+        {
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - (*state.tau_fit)[i] * state.b_vec[0] - (*state.tau_pi_fit)[i] * state.b_vec_pi[0];
+        }
+    }
+    for (size_t i = 0; i < state.n_y; i++)
+    {
+        if ((*state.Z_std)[0][i] == 1)
+        {
+            // if treated
+            mu2sum_trt += pow((*state.mu_pi_fit)[i], 2);
+            muressum_trt += (*state.mu_pi_fit)[i] * (*state.residual_std)[0][i];
+        }
+        else
+        {
+            mu2sum_ctrl += pow((*state.mu_pi_fit)[i], 2);
+            muressum_ctrl += (*state.mu_pi_fit)[i] * (*state.residual_std)[0][i];
+        }
+    }
+    // update parameters
+    double v0 = 1.0 / (1.0 + mu2sum_ctrl / pow(state.sigma_vec[0], 2));
+    double m0 = v0 * (muressum_ctrl) / pow(state.sigma_vec[0], 2);
+    double v1 = 1 / (1.0 / v0 + mu2sum_trt / pow(state.sigma_vec[1], 2));
+    double m1 = v1 * (m0 / v0 + (muressum_trt) / pow(state.sigma_vec[1], 2));
+    
+    state.a = m1 + sqrt(v1) * normal_samp(state.gen);
+    
+    return;
+}
+
+void XBCFDiscretePropensityShrinkageModel::update_b_pi(State &state)
+{
+    // update b0 and b1 for XBCF discrete treatment
+    
+    std::normal_distribution<double> normal_samp(0.0, 1.0);
+    
+    double tau2sum_ctrl = 0;
+    double tau2sum_trt = 0;
+    double tauressum_ctrl = 0;
+    double tauressum_trt = 0;
+    
+    // compute the residual y-a*mu(x) using state's objects y_std, mu_fit and a
+    for (size_t i = 0; i < state.n_y; i++)
+    {
+        if ((*state.Z_std)[0][i] == 1)
+        {
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (*state.tau_fit)[i] * state.b_vec[1];
+        }
+        else
+        {
+            (*state.residual_std)[0][i] = (*state.y_std)[i] - state.a * (*state.mu_fit)[i] - state.a_pi * (*state.mu_pi_fit)[i] - (*state.tau_fit)[i] * state.b_vec[0];
+        }
+        
+    }
+    
+    for (size_t i = 0; i < state.n_y; i++)
+    {
+        if ((*state.Z_std)[0][i] == 1)
+        {
+            tau2sum_trt += pow((*state.tau_pi_fit)[i], 2);
+            tauressum_trt += (*state.tau_pi_fit)[i] * (*state.residual_std)[0][i];
+        }
+        else
+        {
+            tau2sum_ctrl += pow((*state.tau_pi_fit)[i], 2);
+            tauressum_ctrl += (*state.tau_pi_fit)[i] * (*state.residual_std)[0][i];
+        }
+    }
+    
+    // update parameters
+    double v0 = 1.0 / (2.0 + tau2sum_ctrl / pow(state.sigma_vec[0], 2));
+    double v1 = 1.0 / (2.0 + tau2sum_trt / pow(state.sigma_vec[1], 2));
+    
+    double m0 = v0 * (tauressum_ctrl) / pow(state.sigma_vec[0], 2);
+    double m1 = v1 * (tauressum_trt) / pow(state.sigma_vec[1], 2);
+    
+    // sample b0, b1
+    double b0 = m0 + sqrt(v0) * normal_samp(state.gen);
+    double b1 = m1 + sqrt(v1) * normal_samp(state.gen);
+    
+    state.b_vec[1] = b1;
+    state.b_vec[0] = b0;
+    
+    return;
+}
+

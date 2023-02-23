@@ -315,6 +315,66 @@ void rcpp_to_std2(arma::mat &y, arma::mat &Z, arma::mat &X_con, arma::mat &X_mod
     return;
 }
 
+void rcpp_to_std2(arma::mat &pi_X_con, arma::mat &pi_X_mod, Rcpp::NumericMatrix &pi_X_std_con, Rcpp::NumericMatrix &pi_X_std_mod, matrix<size_t> &pi_Xorder_std_con, matrix<size_t> &pi_Xorder_std_mod)
+{
+    // The goal of this function is to convert RCPP object to std objects
+    // TODO: Refactor code so for loops are self contained functions
+    // TODO: Why RCPP and not std?
+    // TODO: inefficient Need Replacement?
+    size_t N = pi_X_con.n_rows;
+    size_t p_con_pi = pi_X_con.n_cols;
+    size_t p_mod_pi = pi_X_mod.n_cols;
+    
+    // pi_X_std
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p_con_pi; j++)
+        {
+            pi_X_std_con(i, j) = pi_X_con(i, j);
+        }
+    }
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p_mod_pi; j++)
+        {
+            pi_X_std_mod(i, j) = pi_X_mod(i, j);
+        }
+    }
+    
+    // pi_Xorder
+    arma::umat pi_Xorder_con(pi_X_con.n_rows, pi_X_con.n_cols);
+    for (size_t i = 0; i < pi_X_con.n_cols; i++)
+    {
+        pi_Xorder_con.col(i) = arma::sort_index(pi_X_con.col(i));
+    }
+    // Create
+    // #pragma omp parallel for collapse(2)
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p_con_pi; j++)
+        {
+            pi_Xorder_std_con[j][i] = pi_Xorder_con(i, j);
+        }
+    }
+    
+    // pi_Xorder
+    arma::umat pi_Xorder_mod(pi_X_mod.n_rows, pi_X_mod.n_cols);
+    for (size_t i = 0; i < pi_X_mod.n_cols; i++)
+    {
+        pi_Xorder_mod.col(i) = arma::sort_index(pi_X_mod.col(i));
+    }
+    // Create
+    // #pragma omp parallel for collapse(2)
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p_mod_pi; j++)
+        {
+            pi_Xorder_std_mod[j][i] = pi_Xorder_mod(i, j);
+        }
+    }
+    return;
+}
+
 void tree_to_string(vector<vector<tree>> &trees, Rcpp::StringVector &output_tree, size_t num_sweeps, size_t num_trees, size_t p)
 {
     std::stringstream treess;
