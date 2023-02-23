@@ -21,8 +21,8 @@ XBCF_discrete_cpp <- function(y, Z, X_con, X_mod, num_trees_con, num_trees_mod, 
     .Call(`_XBART_XBCF_discrete_cpp`, y, Z, X_con, X_mod, num_trees_con, num_trees_mod, num_sweeps, max_depth, n_min, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, tau_con, tau_mod, no_split_penalty, burnin, mtry_con, mtry_mod, p_categorical_con, p_categorical_mod, kap, s, tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, pr_scale, trt_scale, a_scaling, b_scaling, verbose, sampling_tau, parallel, set_random_seed, random_seed, sample_weights, nthread)
 }
 
-XBCF_discrete_projected_residual_cpp <- function(y, Z, X_con, X_mod, num_trees_con, num_trees_mod, num_sweeps, max_depth, n_min, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, tau_con, tau_mod, no_split_penalty, burnin = 1L, mtry_con = 0L, mtry_mod = 0L, p_categorical_con = 0L, p_categorical_mod = 0L, kap = 16, s = 4, tau_con_kap = 3, tau_con_s = 0.5, tau_mod_kap = 3, tau_mod_s = 0.5, pr_scale = FALSE, trt_scale = FALSE, a_scaling = TRUE, b_scaling = TRUE, verbose = FALSE, sampling_tau = TRUE, parallel = TRUE, set_random_seed = FALSE, random_seed = 0L, sample_weights = TRUE, nthread = 0) {
-    .Call(`_XBART_XBCF_discrete_projected_residual_cpp`, y, Z, X_con, X_mod, num_trees_con, num_trees_mod, num_sweeps, max_depth, n_min, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, tau_con, tau_mod, no_split_penalty, burnin, mtry_con, mtry_mod, p_categorical_con, p_categorical_mod, kap, s, tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, pr_scale, trt_scale, a_scaling, b_scaling, verbose, sampling_tau, parallel, set_random_seed, random_seed, sample_weights, nthread)
+XBCF_discrete_projected_residual_cpp <- function(y, Z, X_con, X_mod, num_trees_con, num_trees_mod, num_sweeps, max_depth, n_min, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, tau_con, tau_mod, tau_con_pi, tau_mod_pi, no_split_penalty, burnin = 1L, mtry_con = 0L, mtry_mod = 0L, p_categorical_con = 0L, p_categorical_mod = 0L, kap = 16, s = 4, tau_con_kap = 3, tau_con_s = 0.5, tau_mod_kap = 3, tau_mod_s = 0.5, pr_scale = FALSE, trt_scale = FALSE, a_scaling = TRUE, b_scaling = TRUE, verbose = FALSE, sampling_tau = TRUE, parallel = TRUE, set_random_seed = FALSE, random_seed = 0L, sample_weights = TRUE, nthread = 0, tau_con_pi_kap = 3, tau_con_pi_s = 0.5, tau_mod_pi_kap = 3, tau_mod_pi_s = 0.5) {
+    .Call(`_XBART_XBCF_discrete_projected_residual_cpp`, y, Z, X_con, X_mod, num_trees_con, num_trees_mod, num_sweeps, max_depth, n_min, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, tau_con, tau_mod, tau_con_pi, tau_mod_pi, no_split_penalty, burnin, mtry_con, mtry_mod, p_categorical_con, p_categorical_mod, kap, s, tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, pr_scale, trt_scale, a_scaling, b_scaling, verbose, sampling_tau, parallel, set_random_seed, random_seed, sample_weights, nthread, tau_con_pi_kap, tau_con_pi_s, tau_mod_pi_kap, tau_mod_pi_s)
 }
 
 xbart_predict <- function(X, y_mean, tree_pnt) {
@@ -37,8 +37,8 @@ XBCF_discrete_predict <- function(X_con, X_mod, Z, tree_con, tree_mod) {
     .Call(`_XBART_XBCF_discrete_predict`, X_con, X_mod, Z, tree_con, tree_mod)
 }
 
-XBCF_discrete_projected_residual_predict <- function(X_con, X_mod, Z, tree_con, tree_mod) {
-    .Call(`_XBART_XBCF_discrete_projected_residual_predict`, X_con, X_mod, Z, tree_con, tree_mod)
+XBCF_discrete_projected_residual_predict <- function(X_con, X_mod, Z, tree_con, tree_mod, tree_con_pi, tree_mod_pi) {
+    .Call(`_XBART_XBCF_discrete_projected_residual_predict`, X_con, X_mod, Z, tree_con, tree_mod, tree_con_pi, tree_mod_pi)
 }
 
 xbart_predict_full <- function(X, y_mean, tree_pnt) {

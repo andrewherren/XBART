@@ -162,6 +162,10 @@ public:
 
     void grow_from_root(State &state, matrix<size_t> &Xorder_std, std::vector<size_t> &X_counts, std::vector<size_t> &X_num_unique, Model *model, X_struct &x_struct, const size_t &sweeps, const size_t &tree_ind);
 
+    void compute_pi_hat(State &state);
+    
+    void compute_pi_hat(const double *X_std, matrix<double> *Z_std, vector<double> &pi_X_std, size_t N, size_t p);
+    
     void grow_from_root_entropy(State &state, matrix<size_t> &Xorder_std, std::vector<size_t> &X_counts, std::vector<size_t> &X_num_unique, Model *model, X_struct &x_struct, const size_t &sweeps, const size_t &tree_ind);
 
     void grow_from_root_separate_tree(State &state, matrix<size_t> &Xorder_std, std::vector<size_t> &X_counts, std::vector<size_t> &X_num_unique, Model *model, X_struct &x_struct, const size_t &sweeps, const size_t &tree_ind);
@@ -265,6 +269,10 @@ void getTheta_Outsample(matrix<double> &output, tree &tree, const double *Xtest,
 void getThetaForObs_Insample(matrix<double> &output, size_t x_index, State &state, X_struct &x_struct);
 
 void getThetaForObs_Outsample(matrix<double> &output, std::vector<tree> &tree, size_t x_index, const double *Xtest, size_t N_Xtest, size_t p);
+
+void getThetaForObs_Outsample(matrix<double> &output, tree &tree, size_t x_index, const double *Xtest, size_t N_Xtest, size_t p);
+
+void getThetaProjForObs_Outsample(matrix<double> &output, std::vector<tree> &tree, size_t x_index, const double *Xtest, size_t N_Xtest, size_t p);
 
 void getThetaForObs_Outsample_ave(matrix<double> &output, std::vector<tree> &tree, size_t x_index, const double *Xtest, size_t N_Xtest, size_t p);
 

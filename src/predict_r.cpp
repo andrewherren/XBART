@@ -221,7 +221,9 @@ Rcpp::List XBCF_discrete_predict(mat X_con, mat X_mod, mat Z, Rcpp::XPtr<std::ve
 Rcpp::List XBCF_discrete_projected_residual_predict(
     mat X_con, mat X_mod, mat Z, 
     Rcpp::XPtr<std::vector<std::vector<tree>>> tree_con, 
-    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_mod
+    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_mod, 
+    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_con_pi, 
+    Rcpp::XPtr<std::vector<std::vector<tree>>> tree_mod_pi
 )
 {
     // size of data
@@ -258,9 +260,32 @@ Rcpp::List XBCF_discrete_projected_residual_predict(
     double *Xpointer_con = &X_std_con[0];
     double *Xpointer_mod = &X_std_mod[0];
     
+    // Init pi_X_std matrix to a default 0.5
+    size_t p_con_pi = 1;
+    size_t p_mod_pi = 1;
+    Rcpp::NumericMatrix pi_X_std_con(N, p_con_pi);
+    Rcpp::NumericMatrix pi_X_std_mod(N, p_mod_pi);
+    
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p_con_pi; j++)
+        {
+            pi_X_std_con(i, j) = 0.5;
+        }
+        
+        for (size_t j = 0; j < p_mod_pi; j++)
+        {
+            pi_X_std_mod(i, j) = 0.5;
+        }
+    }
+    double *pi_Xpointer_con = &pi_X_std_con[0];
+    double *pi_Xpointer_mod = &pi_X_std_mod[0];
+    
     // Trees
     std::vector<std::vector<tree>> *trees_con = tree_con;
     std::vector<std::vector<tree>> *trees_mod = tree_mod;
+    std::vector<std::vector<tree>> *trees_con_pi = tree_con_pi;
+    std::vector<std::vector<tree>> *trees_mod_pi = tree_mod_pi;
     
     // Result Container
     size_t num_sweeps = (*trees_con).size();
@@ -274,18 +299,31 @@ Rcpp::List XBCF_discrete_projected_residual_predict(
     
     matrix<double> treatment_xinfo;
     ini_matrix(treatment_xinfo, N, num_sweeps);
+
+    matrix<double> prognostic_proj_xinfo;
+    ini_matrix(prognostic_proj_xinfo, N, num_sweeps);
+    
+    matrix<double> treatment_proj_xinfo;
+    ini_matrix(treatment_proj_xinfo, N, num_sweeps);
     
     matrix<double> yhats_test_xinfo;
     ini_xinfo(yhats_test_xinfo, N, num_sweeps);
     XBCFDiscreteProjectedResidualModel *model = new XBCFDiscreteProjectedResidualModel();
-    // Predict
     
-    model->predict_std(Ztest_std, Xpointer_con, Xpointer_mod, N, p_con, p_mod, num_trees_con, num_trees_mod, num_sweeps, yhats_test_xinfo, prognostic_xinfo, treatment_xinfo, *trees_con, *trees_mod);
+    // Predict
+    model->predict_std(
+            Ztest_std, Xpointer_con, Xpointer_mod, pi_Xpointer_con, pi_Xpointer_mod, 
+            N, p_con, p_mod, num_trees_con, num_trees_mod, num_sweeps, yhats_test_xinfo, 
+            prognostic_xinfo, treatment_xinfo, prognostic_proj_xinfo, treatment_proj_xinfo, 
+            *trees_con, *trees_mod, *trees_con_pi, *trees_mod_pi
+    );
     
     // Convert back to Rcpp
     Rcpp::NumericMatrix yhats(N, num_sweeps);
     Rcpp::NumericMatrix prognostic(N, num_sweeps);
     Rcpp::NumericMatrix treatment(N, num_sweeps);
+    Rcpp::NumericMatrix prognostic_proj(N, num_sweeps);
+    Rcpp::NumericMatrix treatment_proj(N, num_sweeps);
     for (size_t i = 0; i < N; i++)
     {
         for (size_t j = 0; j < num_sweeps; j++)
@@ -293,10 +331,16 @@ Rcpp::List XBCF_discrete_projected_residual_predict(
             yhats(i, j) = yhats_test_xinfo[j][i];
             prognostic(i, j) = prognostic_xinfo[j][i];
             treatment(i, j) = treatment_xinfo[j][i];
+            prognostic_proj(i, j) = prognostic_proj_xinfo[j][i];
+            treatment_proj(i, j) = treatment_proj_xinfo[j][i];
         }
     }
     
-    return Rcpp::List::create(Rcpp::Named("mu") = prognostic, Rcpp::Named("tau") = treatment, Rcpp::Named("yhats") = yhats);
+    return Rcpp::List::create(
+        Rcpp::Named("mu") = prognostic, Rcpp::Named("tau") = treatment, 
+        Rcpp::Named("mu_pi") = prognostic_proj, 
+        Rcpp::Named("tau_pi") = treatment_proj, 
+        Rcpp::Named("yhats") = yhats);
 }
 
 // [[Rcpp::export]]

@@ -8,7 +8,7 @@ colnames(rmse.stats) <- c("xbart::xbcf")
 
 for(i in c(1:reps)) {
     #### 1. DATA GENERATION PROCESS
-    n <- 5000 # number of observations
+    n <- 500 # number of observations
     # set seed here
     # set.seed(1)
     
@@ -21,7 +21,8 @@ for(i in c(1:reps)) {
     x <- cbind(x1, x2, x3, x4, x5)
     
     # define treatment effects
-    tau <- 2 + 0.5 * x[, 4] * (2 * x[, 5] - 1)
+    # tau <- 2 + 0.5 * x[, 4] * (2 * x[, 5] - 1)
+    tau <- 2 + 1 * x[, 4]
     
     ## define prognostic function (RIC)
     mu <- function(x) {
@@ -61,9 +62,6 @@ for(i in c(1:reps)) {
     # run XBCF (XBART repo)
     t1 = proc.time()
     xbcf.fit.xb <- XBART::XBCF.discrete.projected.residual(
-    #     y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pihat, 
-    #     p_categorical_con = 5, p_categorical_mod = 5, num_sweeps = 60, burnin = 30
-    # )
     # xbcf.fit.xb <- XBART::XBCF.discrete(
         y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pihat, 
         p_categorical_con = 5, p_categorical_mod = 5, num_sweeps = 60, burnin = 30

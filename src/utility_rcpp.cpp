@@ -315,6 +315,100 @@ void rcpp_to_std2(arma::mat &y, arma::mat &Z, arma::mat &X_con, arma::mat &X_mod
     return;
 }
 
+
+void initialize_pihat(arma::mat &pi_X, Rcpp::NumericMatrix &pi_X_std, arma::umat &pi_Xorder, matrix<size_t> &pi_Xorder_std, size_t N, size_t p)
+{
+    // TODO: Why RCPP and not std?
+    // TODO: inefficient Need Replacement?
+    
+    // pi_X_std
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p; j++)
+        {
+            pi_X_std(i, j) = pi_X(i, j);
+        }
+    }
+    
+    // pi_Xorder
+    for (size_t i = 0; i < p; i++)
+    {
+        pi_Xorder.col(i) = arma::sort_index(pi_X.col(i));
+    }
+    for (size_t i = 0; i < N; i++)
+    {
+        for (size_t j = 0; j < p; j++)
+        {
+            pi_Xorder_std[j][i] = pi_Xorder(i, j);
+        }
+    }
+    
+    return;
+}
+
+
+// void update_pihat_xorder(arma::mat &pi_X, double *pi_X_std, arma::umat &pi_Xorder, matrix<size_t> &pi_Xorder_std, size_t N, size_t p)
+void update_pihat_xorder(State &state)
+{
+    // TODO: Why RCPP and not std?
+    // TODO: inefficient Need Replacement?
+    
+    if (state.treatment_flag){
+        // pi_X_std
+        for (size_t i = 0; i < state.n_y; i++)
+        {
+            for (size_t j = 0; j < state.p_mod_pi; j++)
+            {
+                // pi_X_std(i, j) = pi_X(i, j);
+                // state.pi_X_mod(i, j) = state.pi_X_std_mod(i, j);
+                state.pi_X_mod(i, j) = *(state.pi_X_std_mod + state.n_y * j + i);
+            }
+        }
+        
+        // pi_Xorder
+        for (size_t i = 0; i < state.p_mod_pi; i++)
+        {
+            state.pi_Xorder_mod.col(i) = arma::sort_index(state.pi_X_mod.col(i));
+        }
+        for (size_t i = 0; i < state.n_y; i++)
+        {
+            for (size_t j = 0; j < state.p_mod_pi; j++)
+            {
+                // state.pi_Xorder_std_mod[j][i] = state.pi_Xorder_mod(i, j);
+                (*state.pi_Xorder_std_mod)[j][i] = state.pi_Xorder_mod(i, j);
+            }
+        }
+    } else {
+        // pi_X_std
+        for (size_t i = 0; i < state.n_y; i++)
+        {
+            for (size_t j = 0; j < state.p_con_pi; j++)
+            {
+                // pi_X_std(i, j) = pi_X(i, j);
+                // state.pi_X_con(i, j) = state.pi_X_std_con(i, j);
+                state.pi_X_con(i, j) = *(state.pi_X_std_con + state.n_y * j + i);
+            }
+        }
+        
+        // pi_Xorder
+        for (size_t i = 0; i < state.p_con_pi; i++)
+        {
+            state.pi_Xorder_con.col(i) = arma::sort_index(state.pi_X_con.col(i));
+        }
+        for (size_t i = 0; i < state.n_y; i++)
+        {
+            for (size_t j = 0; j < state.p_con_pi; j++)
+            {
+                // state.pi_Xorder_std_con[j][i] = state.pi_Xorder_con(i, j);
+                (*state.pi_Xorder_std_con)[j][i] = state.pi_Xorder_con(i, j);
+            }
+        }
+    }
+    
+    return;
+}
+
+
 void tree_to_string(vector<vector<tree>> &trees, Rcpp::StringVector &output_tree, size_t num_sweeps, size_t num_trees, size_t p)
 {
     std::stringstream treess;

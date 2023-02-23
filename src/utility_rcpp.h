@@ -21,6 +21,10 @@ void rcpp_to_std2(arma::mat &y, arma::mat &Z, arma::mat &X, arma::mat &Ztest, ar
 
 void rcpp_to_std2(arma::mat &y, arma::mat &Z, arma::mat &X_con, arma::mat &X_mod, std::vector<double> &y_std, double &y_mean, matrix<double> &Z_std, Rcpp::NumericMatrix &X_std_con, Rcpp::NumericMatrix &X_std_mod, matrix<size_t> &Xorder_std_con, matrix<size_t> &Xorder_std_mod);
 
+void initialize_pihat(arma::mat &pi_X, Rcpp::NumericMatrix &pi_X_std, arma::umat &pi_Xorder, matrix<size_t> &pi_Xorder_std, size_t N, size_t p);
+
+void update_pihat_xorder(State &state);
+
 void Matrix_to_NumericMatrix(matrix<double> &a, Rcpp::NumericMatrix &b);
 
 void tree_to_string(vector<vector<tree>> &trees, Rcpp::StringVector &output_tree, size_t num_sweeps, size_t num_trees, size_t p);

@@ -16,6 +16,8 @@
 #' @param beta_mod Scalar, BART prior parameter for treatment forest. The default value is 1.25.
 #' @param tau_con Scalar, prior parameter for prognostic forest. The default value is 0.6 * var(y) / num_trees_con.
 #' @param tau_mod Scalar, prior parameter for treatment forest. The default value is 0.1 * var(y) / num_trees_mod.
+#' @param tau_con_pi Scalar, prior parameter for prognostic forest. The default value is 0.6 * var(y) / num_trees_con.
+#' @param tau_mod_pi Scalar, prior parameter for treatment forest. The default value is 0.1 * var(y) / num_trees_mod.
 #' @param no_split_penalty Weight of no-split option. The default value is log(num_cutpoints), or you can take any other number in log scale.
 #' @param burnin Integer, number of burnin sweeps.
 #' @param mtry_con Integer, number of X variables to sample at each split of the prognostic forest.
@@ -36,12 +38,27 @@
 #' @param nthread Integer, number of threads to use if run in parallel.
 #' @param random_seed Integer, random seed for replication.
 #' @param sample_weights Bool, if TRUE, the weight to sample \eqn{X} variables at each tree will be sampled.
+#' @param alpha_con_pi Scalar, BART prior parameter for prognostic forest. The default value is 0.95.
+#' @param beta_con_pi Scalar, BART prior parameter for prognostic forest. The default value is 1.25.
+#' @param alpha_mod_pi Scalar, BART prior parameter for treatment forest. The default value is 0.95.
+#' @param beta_mod_pi Scalar, BART prior parameter for treatment forest. The default value is 1.25.
 #'
 #' @return A list contains fitted trees as well as parameter draws at each sweep.
 #' @export
 
 
-XBCF.discrete.projected.residual <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, num_trees_mod = 10, num_sweeps = 60, max_depth = 50, Nmin = 1, num_cutpoints = 100, alpha_con = 0.95, beta_con = 1.25, alpha_mod = 0.25, beta_mod = 3, tau_con = NULL, tau_mod = NULL, no_split_penalty = NULL, burnin = 20, mtry_con = NULL, mtry_mod = NULL, p_categorical_con = 0L, p_categorical_mod = 0L, kap = 16, s = 4, tau_con_kap = 3, tau_con_s = 0.5, tau_mod_kap = 3, tau_mod_s = 0.5, pr_scale = FALSE, trt_scale = FALSE, a_scaling = TRUE, b_scaling = TRUE, verbose = FALSE, update_tau = TRUE, parallel = TRUE, random_seed = NULL, sample_weights = TRUE, nthread = 0, ...) {
+XBCF.discrete.projected.residual <- function(
+        y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, num_trees_mod = 10, 
+        num_sweeps = 60, max_depth = 50, Nmin = 1, num_cutpoints = 100, 
+        alpha_con = 0.95, beta_con = 1.25, alpha_mod = 0.25, beta_mod = 3, 
+        tau_con = NULL, tau_mod = NULL, tau_con_pi = NULL, tau_mod_pi = NULL, no_split_penalty = NULL, burnin = 20, 
+        mtry_con = NULL, mtry_mod = NULL, p_categorical_con = 0L, p_categorical_mod = 0L, 
+        kap = 16, s = 4, tau_con_kap = 3, tau_con_s = 0.5, tau_mod_kap = 3, tau_mod_s = 0.5, 
+        pr_scale = FALSE, trt_scale = FALSE, a_scaling = TRUE, b_scaling = TRUE, 
+        verbose = FALSE, update_tau = TRUE, parallel = TRUE, random_seed = NULL, 
+        sample_weights = TRUE, nthread = 0, 
+        alpha_con_pi = 0.95, beta_con_pi = 1.25, alpha_mod_pi = 0.25, beta_mod_pi = 3, 
+        tau_con_pi_kap = 3, tau_con_pi_s = 0.5, tau_mod_pi_kap = 3, tau_mod_pi_s = 0.5, ...) {
     if (!("matrix" %in% class(X_con))) {
         cat("Input X_con is not a matrix, try to convert type.\n")
         X_con <- as.matrix(X_con)
@@ -108,6 +125,16 @@ XBCF.discrete.projected.residual <- function(y, Z, X_con, X_mod, pihat = NULL, n
         tau_mod <- 0.1 * var(y) / num_trees_mod
         cat("tau_mod = 0.1*var(y)/num_trees_mod, default value. \n")
     }
+    
+    if (is.null(tau_con_pi)) {
+        tau_con_pi <- 0.6 * var(y) / num_trees_con
+        cat("tau_con_pi = 0.6*var(y)/num_trees_con, default value. \n")
+    }
+    
+    if (is.null(tau_mod_pi)) {
+        tau_mod_pi <- 0.1 * var(y) / num_trees_mod
+        cat("tau_mod_pi = 0.1*var(y)/num_trees_mod, default value. \n")
+    }
 
     if (is.null(mtry_con)) {
         mtry_con <- dim(X_con)[2]
@@ -151,6 +178,10 @@ XBCF.discrete.projected.residual <- function(y, Z, X_con, X_mod, pihat = NULL, n
     check_scalar(beta_con, "beta_con")
     check_scalar(alpha_mod, "alpha_mod")
     check_scalar(beta_mod, "beta_mod")
+    check_scalar(alpha_con_pi, "alpha_con")
+    check_scalar(beta_con_pi, "beta_con")
+    check_scalar(alpha_mod_pi, "alpha_mod")
+    check_scalar(beta_mod_pi, "beta_mod")
     check_scalar(kap, "kap")
     check_scalar(s, "s")
 
@@ -166,11 +197,13 @@ XBCF.discrete.projected.residual <- function(y, Z, X_con, X_mod, pihat = NULL, n
     obj <- XBCF_discrete_projected_residual_cpp(
         y, Z, X_con, X_mod, num_trees_con, num_trees_mod, num_sweeps, max_depth, 
         Nmin, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, 
-        tau_con, tau_mod, no_split_penalty, burnin, mtry_con, mtry_mod, 
+        alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, 
+        tau_con, tau_mod, tau_con_pi, tau_mod_pi, no_split_penalty, burnin, mtry_con, mtry_mod, 
         p_categorical_con, p_categorical_mod, kap, s, tau_con_kap, tau_con_s, 
         tau_mod_kap, tau_mod_s, pr_scale, trt_scale, a_scaling, b_scaling, 
         verbose, update_tau, parallel, set_random_seed, random_seed, 
-        sample_weights, nthread
+        sample_weights, nthread, tau_con_pi_kap, tau_con_pi_s, 
+        tau_mod_pi_kap, tau_mod_pi_s
     )
 
     # store mean and sd in the model object (for predictions)

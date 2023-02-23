@@ -104,6 +104,7 @@ public:
     std::vector<double> *tau_fit;
     std::vector<double> *mu_fit;
     bool treatment_flag;
+    bool projection_flag;
     matrix<size_t> *Xorder_std_con;
     matrix<size_t> *Xorder_std_mod;
     size_t p_con;
@@ -118,7 +119,7 @@ public:
     size_t num_trees_mod;
 
     // extra variables for binary treatment XBCF
-    std::vector<double> b_vec;     // scaling parameters for tau (b0,b1)     TODO: move to xbcfState
+    std::vector<double> b_vec;     // scaling parameters for tau (b0,b1)            TODO: move to xbcfState
     // a is also used for logit model
     double a;                      // scaling parameter for mu               TODO: move to xbcfState
     std::vector<double> sigma_vec; // residual standard deviations           TODO: move to xbcfState
@@ -126,7 +127,30 @@ public:
     bool b_scaling;
     size_t N_trt;
     size_t N_ctrl;
-
+    
+    // extra variables for projected XBCF
+    double a_pi;
+    std::vector<double> b_vec_pi;
+    double *pi_X_std_con; // pointer to pihat_mu
+    double *pi_X_std_mod; // pointer to pihat_tau
+    matrix<size_t> *pi_Xorder_std_con;
+    matrix<size_t> *pi_Xorder_std_mod;
+    size_t p_con_pi;
+    size_t p_mod_pi;
+    size_t p_categorical_con_pi;
+    size_t p_categorical_mod_pi;
+    size_t p_continuous_con_pi;
+    size_t p_continuous_mod_pi;
+    size_t mtry_con_pi;
+    size_t mtry_mod_pi;
+    size_t num_trees_con_pi;
+    size_t num_trees_mod_pi;
+    arma::mat pi_X_con;
+    arma::mat pi_X_mod;
+    arma::umat pi_Xorder_con;
+    arma::umat pi_Xorder_mod;
+    std::vector<double> *tau_pi_fit;
+    std::vector<double> *mu_pi_fit;
 
     void update_sigma(double sigma)
     {
@@ -141,7 +165,6 @@ public:
         this->sigma_vec[ind] = sigma; // sigma for the "ind" group
         return;
     }
-
 
     State(const double *Xpointer, matrix<size_t> &Xorder_std, size_t N, size_t p, size_t num_trees, size_t p_categorical, size_t p_continuous, bool set_random_seed, size_t random_seed, size_t n_min, size_t n_cutpoints, size_t mtry, const double *X_std, size_t num_sweeps, bool sample_weights, std::vector<double> *y_std, double sigma, size_t max_depth, double ini_var_yhat, size_t burnin, size_t dim_residual, size_t nthread)
     {
@@ -359,7 +382,14 @@ public:
         std::vector<double> *y_std, double sigma, size_t max_depth, 
         double ini_var_yhat, size_t burnin, size_t dim_residual, 
         size_t nthread, bool parallel, bool a_scaling, bool b_scaling, 
-        size_t N_trt, size_t N_ctrl
+        size_t N_trt, size_t N_ctrl, double *pi_Xpointer_con, double *pi_Xpointer_mod, 
+        matrix<size_t> &pi_Xorder_std_con, matrix<size_t> &pi_Xorder_std_mod, 
+        size_t p_con_pi, size_t p_mod_pi, size_t num_trees_con_pi, size_t num_trees_mod_pi, 
+        size_t p_categorical_con_pi, size_t p_categorical_mod_pi, 
+        size_t p_continuous_con_pi, size_t p_continuous_mod_pi, 
+        size_t mtry_con_pi, size_t mtry_mod_pi, 
+        arma::mat pi_X_con, arma::mat pi_X_mod, 
+        arma::umat pi_Xorder_con, arma::umat pi_Xorder_mod
     ) : State(
             Xpointer_con, Xorder_std_con, N, p_con, num_trees_con, p_categorical_con, 
             p_continuous_con, set_random_seed, random_seed, n_min, n_cutpoints, mtry_con, 
@@ -368,6 +398,8 @@ public:
     ){
         this->X_std_con = Xpointer_con;
         this->X_std_mod = Xpointer_mod;
+        this->pi_X_std_con = pi_Xpointer_con;
+        this->pi_X_std_mod = pi_Xpointer_mod;
         this->split_count_all_tree_con = new matrix<double>();
         this->split_count_all_tree_mod = new matrix<double>();
         ini_xinfo((*this->split_count_all_tree_con), p_con, num_trees_con);
@@ -382,6 +414,8 @@ public:
         this->parallel = parallel;
         this->tau_fit = (new std::vector<double>(N, 0));
         this->mu_fit = (new std::vector<double>(N, 0));
+        this->tau_pi_fit = (new std::vector<double>(N, 0));
+        this->mu_pi_fit = (new std::vector<double>(N, 0));
         this->Xorder_std_con = &Xorder_std_con;
         this->Xorder_std_mod = &Xorder_std_mod;
         this->p_con = p_con;
@@ -394,6 +428,16 @@ public:
         this->mtry_mod = mtry_mod;
         this->num_trees_con = num_trees_con;
         this->num_trees_mod = num_trees_mod;
+        this->p_con_pi = p_con_pi;
+        this->p_mod_pi = p_mod_pi;
+        this->p_categorical_con_pi = p_categorical_con_pi;
+        this->p_categorical_mod_pi = p_categorical_mod_pi;
+        this->p_continuous_con_pi = p_continuous_con_pi;
+        this->p_continuous_mod_pi = p_continuous_mod_pi;
+        this->mtry_con_pi = mtry_con_pi;
+        this->mtry_mod_pi = mtry_mod_pi;
+        this->num_trees_con_pi = num_trees_con_pi;
+        this->num_trees_mod_pi = num_trees_mod_pi;
         this->a_scaling = a_scaling;
         this->b_scaling = b_scaling;
         this->N_trt = N_trt;
@@ -405,6 +449,16 @@ public:
         this->sigma_vec.resize(2);
         this->sigma_vec[0] = 1;
         this->sigma_vec[1] = 1;
+        this->pi_Xorder_std_con = &pi_Xorder_std_con;
+        this->pi_Xorder_std_mod = &pi_Xorder_std_mod;
+        this->pi_X_con = pi_X_con;
+        this->pi_X_mod = pi_X_mod;
+        this->pi_Xorder_con = pi_Xorder_con;
+        this->pi_Xorder_mod = pi_Xorder_mod;
+        this->a_pi = 1.0;
+        this->b_vec_pi.resize(2);
+        this->b_vec_pi[0] = -0.5;
+        this->b_vec_pi[1] = 0.5;
     }
 };
 

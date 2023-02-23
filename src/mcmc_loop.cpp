@@ -602,18 +602,30 @@ void mcmc_loop_xbcf_discrete_projected_residual(
         matrix<double> &sigma1_draw_xinfo,
         matrix<double> &a_xinfo,
         matrix<double> &b_xinfo,
+        matrix<double> &a_pi_xinfo,
+        matrix<double> &b_pi_xinfo,
         matrix<double> &tau_con_xinfo,
         matrix<double> &tau_mod_xinfo,
+        matrix<double> &tau_con_pi_xinfo,
+        matrix<double> &tau_mod_pi_xinfo,
         vector<vector<tree>> &trees_con,
         vector<vector<tree>> &trees_mod,
         double no_split_penalty,
         XBCFDiscreteProjectedResidualState &state,
         XBCFDiscreteProjectedResidualModel *model,
         X_struct &x_struct_con,
-        X_struct &x_struct_mod
+        X_struct &x_struct_mod,
+        X_struct &pi_x_struct_con,
+        X_struct &pi_x_struct_mod, 
+        matrix<size_t> &pi_Xorder_std_con,
+        matrix<size_t> &pi_Xorder_std_mod,
+        arma::umat &pi_Xorder_con,
+        arma::umat &pi_Xorder_mod,
+        vector<vector<tree>> &trees_pi_con,
+        vector<vector<tree>> &trees_pi_mod
 ){
     model->ini_tau_mu_fit(state);
-    
+
     for (size_t sweeps = 0; sweeps < state.num_sweeps; sweeps++)
     {
         if (verbose == true)
@@ -624,14 +636,16 @@ void mcmc_loop_xbcf_discrete_projected_residual(
         }
         
         // prognostic forest
-        model->set_treatmentflag(state, 0);
-        
+
         for (size_t tree_ind = 0; tree_ind < state.num_trees_con; tree_ind++)
         {
             if (verbose)
             {
                 COUT << "sweep " << sweeps << " tree " << tree_ind << endl;
             }
+            
+            // Set treatment flag to false and projection flag to false
+            model->set_treatment_proj_flag(state, 0, 0);
             
             // Draw Sigma
             model->update_state(state, tree_ind, x_struct_con, 0);
@@ -688,22 +702,77 @@ void mcmc_loop_xbcf_discrete_projected_residual(
                     model->update_b(state);
                 }
             }
+            
+            // Estimate pihat for each leaf of the tree
+            trees_con[sweeps][tree_ind].compute_pi_hat(state);
+            
+            // Update Xorder for pihat
+            // update_pihat_xorder(state.pi_X_con, &state.pi_X_std_con[0], state.pi_Xorder_con, state.pi_Xorder_std_con, state.n_y, 1);
+            update_pihat_xorder(state);
+            
+            // Set treatment flag to false and projection flag to false
+            model->set_treatment_proj_flag(state, 0, 1);
+            
+            // Draw Sigma
+            model->update_state(state, tree_ind, x_struct_con, 0);
+            
+            sigma0_draw_xinfo[sweeps][tree_ind] = state.sigma_vec[0];
+            
+            if (state.use_all && (sweeps > state.burnin) && (state.mtry != state.p))
+            {
+                state.use_all = false;
+            }
+            
+            // Fit an XBART tree to the projected pihat vector
+            // update tau_fit from full fit to partial fit
+            model->subtract_old_tree_fit(tree_ind, state, pi_x_struct_con);
+            
+            // calculate partial residuals based on partial fit
+            model->update_partial_residuals(tree_ind, state, pi_x_struct_con);
+            
+            model->initialize_root_suffstat(state, trees_pi_con[sweeps][tree_ind].suff_stat);
+            
+            trees_pi_con[sweeps][tree_ind].grow_from_root(state, pi_Xorder_std_con, pi_x_struct_con.X_counts, pi_x_struct_con.X_num_unique, model, pi_x_struct_con, sweeps, tree_ind);
+            
+            // update tau_fit from partial fit to full fit
+            model->add_new_tree_fit(tree_ind, state, pi_x_struct_con);
+            
+            if (sweeps != 0)
+            {
+                if (state.a_scaling)
+                {
+                    model->update_a_pi(state);
+                }
+                if (state.b_scaling)
+                {
+                    model->update_b_pi(state);
+                }
+            }
         }
         
+        model->set_treatment_proj_flag(state, 0, 0);
         if (model->sampling_tau)
         {
             model->update_tau_per_forest(state, sweeps, trees_con);
         }
         
-        // treatment forest
-        model->set_treatmentflag(state, 1);
+        model->set_treatment_proj_flag(state, 0, 1);
+        if (model->sampling_tau)
+        {
+            model->update_tau_per_forest(state, sweeps, trees_pi_con);
+        }
         
+        // treatment forest
+
         for (size_t tree_ind = 0; tree_ind < state.num_trees_mod; tree_ind++)
         {
             if (verbose)
             {
                 COUT << "sweep " << sweeps << " tree " << tree_ind << endl;
             }
+            
+            // Set treatment flag to true and projection flag to false
+            model->set_treatment_proj_flag(state, 1, 0);
             
             // Draw Sigma
             model->update_state(state, tree_ind, x_struct_mod, 1);
@@ -760,17 +829,66 @@ void mcmc_loop_xbcf_discrete_projected_residual(
                     model->update_b(state);
                 }
             }
+            
+            // Estimate pihat for each leaf of the tree
+            trees_mod[sweeps][tree_ind].compute_pi_hat(state);
+            
+            // Update Xorder for pihat
+            // update_pihat_xorder(state.pi_X_con, &state.pi_X_std_con[0], state.pi_Xorder_con, state.pi_Xorder_std_con, state.n_y, 1);
+            update_pihat_xorder(state);
+            
+            // Set treatment flag to false and projection flag to false
+            model->set_treatment_proj_flag(state, 1, 1);
+            
+            // Fit an XBART tree to the projected pihat vector
+            // update tau_fit from full fit to partial fit
+            model->subtract_old_tree_fit(tree_ind, state, pi_x_struct_mod);
+            
+            // calculate partial residuals based on partial fit
+            model->update_partial_residuals(tree_ind, state, pi_x_struct_mod);
+            
+            model->initialize_root_suffstat(state, trees_pi_mod[sweeps][tree_ind].suff_stat);
+            
+            trees_pi_mod[sweeps][tree_ind].grow_from_root(state, pi_Xorder_std_mod, pi_x_struct_mod.X_counts, pi_x_struct_mod.X_num_unique, model, pi_x_struct_mod, sweeps, tree_ind);
+            
+            // update tau_fit from partial fit to full fit
+            model->add_new_tree_fit(tree_ind, state, pi_x_struct_mod);
+            
+            if (sweeps != 0)
+            {
+                if (state.a_scaling)
+                {
+                    model->update_a_pi(state);
+                }
+                if (state.b_scaling)
+                {
+                    model->update_b_pi(state);
+                }
+            }
         }
         
+        model->set_treatment_proj_flag(state, 1, 0);
         if (model->sampling_tau)
         {
             model->update_tau_per_forest(state, sweeps, trees_mod);
         }
+        
+        model->set_treatment_proj_flag(state, 1, 1);
+        if (model->sampling_tau)
+        {
+            model->update_tau_per_forest(state, sweeps, trees_pi_mod);
+        }
+        
         tau_con_xinfo[0][sweeps] = model->tau_con;
         tau_mod_xinfo[0][sweeps] = model->tau_mod;
         b_xinfo[0][sweeps] = state.b_vec[0];
         b_xinfo[1][sweeps] = state.b_vec[1];
         a_xinfo[0][sweeps] = state.a;
+        tau_con_pi_xinfo[0][sweeps] = model->tau_con_pi;
+        tau_mod_pi_xinfo[0][sweeps] = model->tau_mod_pi;
+        b_pi_xinfo[0][sweeps] = state.b_vec_pi[0];
+        b_pi_xinfo[1][sweeps] = state.b_vec_pi[1];
+        a_pi_xinfo[0][sweeps] = state.a_pi;
     }
     return;
 }

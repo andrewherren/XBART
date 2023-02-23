@@ -708,6 +708,87 @@ void tree::grow_from_root(State &state, matrix<size_t> &Xorder_std, std::vector<
     return;
 }
 
+void tree::compute_pi_hat(State &state)
+{
+    size_t N = state.n_y;
+    size_t p;
+    if (state.treatment_flag){
+        p = state.p_mod;
+    } else {
+        p = state.p_con;
+    }
+    
+    std::map<tree::tree_p, size_t> bottom_node_N;
+    std::map<tree::tree_p, size_t> bottom_node_N_treated;
+    std::map<tree::tree_p, double> bottom_node_Z_bar;
+    
+    std::vector<tree *> leaf_nodes;
+    this->getbots(leaf_nodes);
+    for (size_t i = 0; i < leaf_nodes.size(); i++)
+    {
+        bottom_node_N[leaf_nodes[i]] = 0;
+        bottom_node_N_treated[leaf_nodes[i]] = 0;
+        bottom_node_Z_bar[leaf_nodes[i]] = 0.0;
+    }
+    
+    tree::tree_p bn; // pointer to bottom node
+    for (size_t i = 0; i < N; i++)
+    {
+        bn = this->search_bottom_std(state.X_std, i, p, N);
+        bottom_node_N[bn] += 1;
+        if ((*state.Z_std)[0][i] == 1){
+            bottom_node_N_treated[bn] += 1;
+        }
+        bottom_node_Z_bar[bn] = (double) bottom_node_N_treated[bn]/bottom_node_N[bn];
+    }
+    
+    for (size_t i = 0; i < N; i++)
+    {
+        bn = this->search_bottom_std(state.X_std, i, p, N);
+        if (state.treatment_flag){
+            state.pi_X_std_mod[i] = bottom_node_Z_bar[bn];
+        } else {
+            state.pi_X_std_con[i] = bottom_node_Z_bar[bn];
+        }
+    }
+    
+    return;
+}
+
+void tree::compute_pi_hat(const double *X_std, matrix<double> *Z_std, vector<double> &pi_X_std, size_t N, size_t p)
+{
+    std::map<tree::tree_p, size_t> bottom_node_N;
+    std::map<tree::tree_p, size_t> bottom_node_N_treated;
+    std::map<tree::tree_p, double> bottom_node_Z_bar;
+    
+    std::vector<tree *> leaf_nodes;
+    this->getbots(leaf_nodes);
+    for (size_t i = 0; i < leaf_nodes.size(); i++)
+    {
+        bottom_node_N[leaf_nodes[i]] = 0;
+        bottom_node_N_treated[leaf_nodes[i]] = 0;
+        bottom_node_Z_bar[leaf_nodes[i]] = 0.0;
+    }
+    
+    tree::tree_p bn; // pointer to bottom node
+    for (size_t i = 0; i < N; i++)
+    {
+        bn = this->search_bottom_std(X_std, i, p, N);
+        bottom_node_N[bn] += 1;
+        if ((*Z_std)[0][i] == 1){
+            bottom_node_N_treated[bn] += 1;
+        }
+        bottom_node_Z_bar[bn] = (double) bottom_node_N_treated[bn]/bottom_node_N[bn];
+    }
+    
+    for (size_t i = 0; i < N; i++)
+    {
+        bn = this->search_bottom_std(X_std, i, p, N);
+        pi_X_std[i] = bottom_node_Z_bar[bn];
+    }
+    return; 
+}
+
 void calculate_entropy(matrix<size_t> &Xorder_std, State &state, std::vector<double> &theta_vector, double &entropy)
 {
     size_t N_Xorder = Xorder_std[0].size();
@@ -2343,6 +2424,20 @@ void getThetaForObs_Outsample(matrix<double> &output, std::vector<tree> &tree, s
         bn = tree[i].search_bottom_std(Xtest, x_index, p, N_Xtest);
         output[i] = bn->theta_vector;
     }
+    return;
+}
+
+void getThetaForObs_Outsample(matrix<double> &output, tree &tree, size_t x_index, const double *Xtest, size_t N_Xtest, size_t p)
+{
+    // get theta of ONE observation of ONE tree, out sample fit
+    // input is a pointer to testing set matrix because it is out of sample
+    // tree is a vector of all trees
+    
+    // output should have dimension (dim_theta, 1)
+    
+    tree::tree_p bn; // pointer to bottom node
+    bn = tree.search_bottom_std(Xtest, x_index, p, N_Xtest);
+    output[0] = bn->theta_vector;
     return;
 }
 

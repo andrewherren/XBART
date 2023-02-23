@@ -5,6 +5,7 @@
 #include "state.h"
 #include "cdf.h"
 #include "X_struct.h"
+#include "utility_rcpp.h"
 
 //////////////////////////////////////////////////////////////////////////////////////
 // main function of the Bayesian backfitting algorithm
@@ -51,15 +52,27 @@ void mcmc_loop_xbcf_discrete_projected_residual(
         matrix<double> &sigma1_draw_xinfo,
         matrix<double> &a_xinfo,
         matrix<double> &b_xinfo,
+        matrix<double> &a_pi_xinfo,
+        matrix<double> &b_pi_xinfo,
         matrix<double> &tau_con_xinfo,
         matrix<double> &tau_mod_xinfo,
+        matrix<double> &tau_con_pi_xinfo,
+        matrix<double> &tau_mod_pi_xinfo,
         vector<vector<tree>> &trees_con,
         vector<vector<tree>> &trees_mod,
         double no_split_penalty,
         XBCFDiscreteProjectedResidualState &state,
         XBCFDiscreteProjectedResidualModel *model,
         X_struct &x_struct_con,
-        X_struct &x_struct_mod
+        X_struct &x_struct_mod,
+        X_struct &pi_x_struct_con,
+        X_struct &pi_x_struct_mod, 
+        matrix<size_t> &pi_Xorder_std_con,
+        matrix<size_t> &pi_Xorder_std_mod,
+        arma::umat &pi_Xorder_con,
+        arma::umat &pi_Xorder_mod,
+        vector<vector<tree>> &trees_pi_con,
+        vector<vector<tree>> &trees_pi_mod
 );
 
 // XBART with heteroskedastic variance

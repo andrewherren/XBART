@@ -91,20 +91,36 @@ predict.XBCFDiscreteProjectedResidual <- function(object, X_con, X_mod, Z, pihat
     Z <- as.matrix(Z)
     out_con <- json_to_r(object$tree_json_con)
     out_mod <- json_to_r(object$tree_json_mod)
-    obj <- .Call("_XBART_XBCF_discrete_projected_residual_predict", X_con, X_mod, Z, out_con$model_list$tree_pnt, out_mod$model_list$tree_pnt)
+    out_con_pi <- json_to_r(object$tree_json_con_pi)
+    out_mod_pi <- json_to_r(object$tree_json_mod_pi)
+    obj <- .Call("_XBART_XBCF_discrete_projected_residual_predict", X_con, X_mod, Z, 
+                 out_con$model_list$tree_pnt, out_mod$model_list$tree_pnt, 
+                 out_con_pi$model_list$tree_pnt, out_mod_pi$model_list$tree_pnt)
     
     burnin <- burnin
     sweeps <- nrow(object$a)
     mus <- matrix(NA, nrow(X_con), sweeps)
     taus <- matrix(NA, nrow(X_mod), sweeps)
+    mus_x <- matrix(NA, nrow(X_con), sweeps)
+    taus_x <- matrix(NA, nrow(X_mod), sweeps)
+    mus_pi <- matrix(NA, nrow(X_con), sweeps)
+    taus_pi <- matrix(NA, nrow(X_mod), sweeps)
     seq <- c(1:sweeps)
     for (i in seq) {
-        taus[, i] = obj$tau[,i] * object$sdy * (object$b[i,2] - object$b[i,1])
-        mus[, i] = obj$mu[,i] * object$sdy * (object$a[i]) + object$meany
+        taus[, i] = obj$tau[,i] * object$sdy * (object$b[i,2] - object$b[i,1]) + obj$tau_pi[,i] * object$sdy * (object$b_pi[i,2] - object$b_pi[i,1])
+        mus[, i] = obj$mu[,i] * object$sdy * (object$a[i]) + object$meany + obj$mu_pi[,i] * object$sdy * (object$a_pi[i])
+        taus_x[, i] = obj$tau[,i] * object$sdy * (object$b[i,2] - object$b[i,1])
+        mus_x[, i] = obj$mu[,i] * object$sdy * (object$a[i]) + object$meany
+        taus_pi[, i] = obj$tau_pi[,i] * object$sdy * (object$b_pi[i,2] - object$b_pi[i,1])
+        mus_pi[, i] = obj$mu_pi[,i] * object$sdy * (object$a_pi[i]) + object$meany
     }
     
     obj$tau.adj <- taus
     obj$mu.adj <- mus
+    obj$tau.x.adj <- taus_x
+    obj$mu.x.adj <- mus_x
+    obj$tau.pi.adj <- taus_pi
+    obj$mu.pi.adj <- mus_pi
     obj$yhats.adj <- Z[,1] * obj$tau.adj + obj$mu.adj
     obj$tau.adj.mean <- rowMeans(obj$tau.adj[,(burnin+1):sweeps])
     obj$mu.adj.mean <- rowMeans(obj$mu.adj[,(burnin+1):sweeps])

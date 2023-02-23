@@ -568,24 +568,39 @@ public:
     double tau_con_s;
     double tau_mod_kap;
     double tau_mod_s;
+    double tau_con_pi_kap;
+    double tau_con_pi_s;
+    double tau_mod_pi_kap;
+    double tau_mod_pi_s;
     // prior on leaf parameter
     double tau_con; // might be updated if sampling tau
     double tau_mod;
     double tau_con_mean; // copy of the original value
     double tau_mod_mean;
-    
+    double tau_con_pi; // might be updated if sampling tau
+    double tau_mod_pi;
+
     double alpha_con;
     double alpha_mod;
     double beta_con;
     double beta_mod;
+    double alpha_con_pi;
+    double alpha_mod_pi;
+    double beta_con_pi;
+    double beta_mod_pi;
     bool sampling_tau;
     
     XBCFDiscreteProjectedResidualModel(
         double kap, double s, double tau_con, double tau_mod, 
+        double tau_con_pi, double tau_mod_pi, 
         double alpha_con, double beta_con, 
         double alpha_mod, double beta_mod, 
         bool sampling_tau, double tau_con_kap, double tau_con_s, 
-        double tau_mod_kap, double tau_mod_s
+        double tau_mod_kap, double tau_mod_s, 
+        double alpha_con_pi, double beta_con_pi, 
+        double alpha_mod_pi, double beta_mod_pi, 
+        double tau_con_pi_kap, double tau_con_pi_s, 
+        double tau_mod_pi_kap, double tau_mod_pi_s
     ) : Model(1, 4){
         this->kap = kap;
         this->s = s;
@@ -595,6 +610,8 @@ public:
         this->tau_mod_s = tau_mod_s;
         this->tau_con = tau_con;
         this->tau_mod = tau_mod;
+        this->tau_con_pi = tau_con_pi;
+        this->tau_mod_pi = tau_mod_pi;
         this->tau_con_mean = tau_con;
         this->tau_mod_mean = tau_mod;
         this->alpha_con = alpha_con;
@@ -606,6 +623,14 @@ public:
         this->dim_residual = 1;
         this->class_operating = 0;
         this->sampling_tau = sampling_tau;
+        this->alpha_con_pi = alpha_con_pi;
+        this->alpha_mod_pi = alpha_mod_pi;
+        this->beta_con_pi = beta_con_pi;
+        this->beta_mod_pi = beta_mod_pi;
+        this->tau_con_pi_kap = tau_con_pi_kap;
+        this->tau_con_pi_s = tau_con_pi_s;
+        this->tau_mod_pi_kap = tau_mod_pi_kap;
+        this->tau_mod_pi_s = tau_mod_pi_s;
     }
     
     XBCFDiscreteProjectedResidualModel() : Model(1, 4) {}
@@ -636,9 +661,11 @@ public:
     
     void ini_residual_std(State &state);
     
-    void predict_std(matrix<double> &Ztestpointer, const double *Xtestpointer_con, const double *Xtestpointer_mod, size_t N_test, size_t p_con, size_t p_mod, size_t num_trees_con, size_t num_trees_mod, size_t num_sweeps, matrix<double> &yhats_test_xinfo, matrix<double> &prognostic_xinfo, matrix<double> &treatment_xinfo, vector<vector<tree>> &trees_con, vector<vector<tree>> &trees_mod);
-    
+    void predict_std(matrix<double> &Ztestpointer, const double *Xtestpointer_con, const double *Xtestpointer_mod, double *pi_Xtestpointer_con, double *pi_Xtestpointer_mod, size_t N_test, size_t p_con, size_t p_mod, size_t num_trees_con, size_t num_trees_mod, size_t num_sweeps, matrix<double> &yhats_test_xinfo, matrix<double> &prognostic_xinfo, matrix<double> &treatment_xinfo, matrix<double> &prognostic_proj_xinfo, matrix<double> &treatment_proj_xinfo, vector<vector<tree>> &trees_con, vector<vector<tree>> &trees_mod, vector<vector<tree>> &trees_con_pi, vector<vector<tree>> &trees_mod_pi);
+
     void set_treatmentflag(State &state, bool value);
+    
+    void set_treatment_proj_flag(State &state, bool treatment, bool proj);
     
     void subtract_old_tree_fit(size_t tree_ind, State &state, X_struct &x_struct);
     
@@ -651,6 +678,10 @@ public:
     void update_a(State &state);
     
     void update_b(State &state);
+    
+    void update_a_pi(State &state);
+    
+    void update_b_pi(State &state);
 };
 
 
