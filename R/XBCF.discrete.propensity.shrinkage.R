@@ -4,8 +4,13 @@
 #' @param Z A vector of treatment variable of length n, expected to be binary 0 or 1.
 #' @param X_con A matrix of input for the prognostic forest of size n by p_con. Column order matters: continuous features should all go before categorical. The number of categorical variables is p_categorical_con.
 #' @param X_mod A matrix of input for the treatment forest of size n by p_con. Column order matters: continuous features should all go before categorical. The number of categorical variables is p_categorical_mod.
+#' @param pihat A vector storing an estimate of the propensity score (fit as Z ~ X_con, using all of the variables)
+#' @param pi_X_con A matrix of propensity scores for the prognostic forest fit with different variables.
+#' @param pi_X_mod A matrix of propensity scores for the treatment forest fit with different variables.
 #' @param num_trees_con Integer, number of trees in the prognostic forest.
 #' @param num_trees_mod Integer, number of trees in the treatment forest.
+#' @param num_trees_con_pi Integer, number of trees in the propensity-only prognostic forest.
+#' @param num_trees_mod_pi Integer, number of trees in the propensity-only treatment forest.
 #' @param num_sweeps Integer, number of sweeps to fit for both forests.
 #' @param max_depth Integer, maximum depth of the trees. The tree will stop grow if reaches the max depth.
 #' @param Nmin Integer, minimal number of data points in a leaf. Any leaf will stop split if number of data points within is smaller than Nmin.
@@ -14,25 +19,39 @@
 #' @param beta_con Scalar, BART prior parameter for prognostic forest. The default value is 1.25.
 #' @param alpha_mod Scalar, BART prior parameter for treatment forest. The default value is 0.95.
 #' @param beta_mod Scalar, BART prior parameter for treatment forest. The default value is 1.25.
+#' @param alpha_con_pi Scalar, BART prior parameter for propensity-only prognostic forest. The default value is 0.95.
+#' @param beta_con_pi Scalar, BART prior parameter for propensity-only prognostic forest. The default value is 1.25.
+#' @param alpha_mod_pi Scalar, BART prior parameter for propensity-only treatment forest. The default value is 0.95.
+#' @param beta_mod_pi Scalar, BART prior parameter for propensity-only treatment forest. The default value is 1.25.
 #' @param tau_con Scalar, prior parameter for prognostic forest. The default value is 0.6 * var(y) / num_trees_con.
 #' @param tau_mod Scalar, prior parameter for treatment forest. The default value is 0.1 * var(y) / num_trees_mod.
+#' @param tau_con_pi Scalar, prior parameter for propensity-only prognostic forest. The default value is 0.6 * var(y) / num_trees_con_pi.
+#' @param tau_mod_pi Scalar, prior parameter for propensity-only treatment forest. The default value is 0.1 * var(y) / num_trees_mod_pi.
 #' @param no_split_penalty Weight of no-split option. The default value is log(num_cutpoints), or you can take any other number in log scale.
 #' @param burnin Integer, number of burnin sweeps.
 #' @param mtry_con Integer, number of X variables to sample at each split of the prognostic forest.
 #' @param mtry_mod Integer, number of X variables to sample at each split of the treatment forest.
+#' @param mtry_con_pi Integer, number of X variables to sample at each split of the propensity-only prognostic forest.
+#' @param mtry_mod_pi Integer, number of X variables to sample at each split of the propensity-only treatment forest.
 #' @param p_categorical_con Integer, number of categorical variables in X_con, note that all categorical variables should be put after continuous variables. Default value is 0.
 #' @param p_categorical_mod Integer, number of categorical variables in X_mod, note that all categorical variables should be put after continuous variables. Default value is 0.
+#' @param p_categorical_con_pi Integer, number of categorical variables in pi_X_con, should be 0.
+#' @param p_categorical_mod_pi Integer, number of categorical variables in pi_X_mod, should be 0.
 #' @param kap Scalar, parameter of the inverse gamma prior on residual variance sigma^2. Default value is 16.
 #' @param s Scalar, parameter of the inverse gamma prior on residual variance sigma^2. Default value is 4.
 #' @param tau_con_kap Scalar, parameter of the inverse gamma prior on tau_con. Default value is 3.
 #' @param tau_con_s Scalar, parameter of the inverse gamma prior on tau_con. Default value is 0.5.
 #' @param tau_mod_kap Scalar, parameter of the inverse gamma prior on tau_mod. Default value is 3.
 #' @param tau_mod_s Scalar, parameter of the inverse gamma prior on tau_mod. Default value is 0.5.
+#' @param tau_con_pi_kap Scalar, parameter of the inverse gamma prior on tau_con. Default value is 3.
+#' @param tau_con_pi_s Scalar, parameter of the inverse gamma prior on tau_con. Default value is 0.5.
+#' @param tau_mod_pi_kap Scalar, parameter of the inverse gamma prior on tau_mod. Default value is 3.
+#' @param tau_mod_pi_s Scalar, parameter of the inverse gamma prior on tau_mod. Default value is 0.5.
 #' @param a_scaling Bool, if TRUE, update the scaling constant of mu(x), a.
 #' @param b_scaling Bool, if TRUE, update the scaling constant of tau(x), b_1 and b_0.
 #' @param verbose Bool, whether to print fitting process on the screen or not.
 #' @param update_tau Bool. If TRUE, update the prior of leaf mean.
-#' @param paralll Bool, whether to run in parallel on multiple CPU threads.
+#' @param parallel Bool, whether to run in parallel on multiple CPU threads.
 #' @param nthread Integer, number of threads to use if run in parallel.
 #' @param random_seed Integer, random seed for replication.
 #' @param sample_weights Bool, if TRUE, the weight to sample \eqn{X} variables at each tree will be sampled.
@@ -41,10 +60,41 @@
 #' @export
 
 
-XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, num_trees_mod = 10, num_sweeps = 60, max_depth = 50, Nmin = 1, num_cutpoints = 100, alpha_con = 0.95, beta_con = 1.25, alpha_mod = 0.25, beta_mod = 3, tau_con = NULL, tau_mod = NULL, no_split_penalty = NULL, burnin = 20, mtry_con = NULL, mtry_mod = NULL, p_categorical_con = 0L, p_categorical_mod = 0L, kap = 16, s = 4, tau_con_kap = 3, tau_con_s = 0.5, tau_mod_kap = 3, tau_mod_s = 0.5, pr_scale = FALSE, trt_scale = FALSE, a_scaling = TRUE, b_scaling = TRUE, verbose = FALSE, update_tau = TRUE, parallel = TRUE, random_seed = NULL, sample_weights = TRUE, nthread = 0, ...) {
+XBCF.discrete.propensity.shrinkage <- function(
+        y, Z, X_con, X_mod, pihat = NULL, pi_X_con, pi_X_mod, 
+        num_trees_con = 30, num_trees_mod = 10, num_trees_con_pi = 30, num_trees_mod_pi = 10, 
+        num_sweeps = 60, max_depth = 50, Nmin = 1, num_cutpoints = 100, 
+        alpha_con = 0.95, beta_con = 1.25, alpha_mod = 0.25, beta_mod = 3, 
+        alpha_con_pi = 0.95, beta_con_pi = 1.25, alpha_mod_pi = 0.25, beta_mod_pi = 3, 
+        tau_con = NULL, tau_mod = NULL, tau_con_pi = NULL, tau_mod_pi = NULL, 
+        no_split_penalty = NULL, burnin = 20, 
+        mtry_con = NULL, mtry_mod = NULL, mtry_con_pi = NULL, mtry_mod_pi = NULL, 
+        p_categorical_con = 0L, p_categorical_mod = 0L, p_categorical_con_pi = 0L, p_categorical_mod_pi = 0L, 
+        kap = 16, s = 4, tau_con_kap = 3, tau_con_s = 0.5, tau_mod_kap = 3, tau_mod_s = 0.5, 
+        tau_con_pi_kap = 3, tau_con_pi_s = 0.5, tau_mod_pi_kap = 3, tau_mod_pi_s = 0.5, 
+        pr_scale = FALSE, trt_scale = FALSE, a_scaling = TRUE, b_scaling = TRUE, 
+        verbose = FALSE, update_tau = TRUE, parallel = TRUE, random_seed = NULL, 
+        sample_weights = TRUE, nthread = 0, include_pi_mu = TRUE, include_pi_tau = FALSE, ...
+    ) {
+    
     if (!("matrix" %in% class(X_con))) {
         cat("Input X_con is not a matrix, try to convert type.\n")
         X_con <- as.matrix(X_con)
+    }
+    
+    if (!("matrix" %in% class(X_mod))) {
+        cat("Input X_mod is not a matrix, try to convert type.\n")
+        X_mod <- as.matrix(X_mod)
+    }
+    
+    if (!("matrix" %in% class(pi_X_con))) {
+        cat("Input pi_X_con is not a matrix, try to convert type.\n")
+        pi_X_con <- as.matrix(pi_X_con)
+    }
+    
+    if (!("matrix" %in% class(pi_X_mod))) {
+        cat("Input pi_X_mod is not a matrix, try to convert type.\n")
+        pi_X_mod <- as.matrix(pi_X_mod)
     }
 
     if (!("matrix" %in% class(y))) {
@@ -81,7 +131,12 @@ XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, 
         pihat <- as.matrix(pihat)
     }
 
-    X_con <- cbind(pihat, X_con)
+    if (include_pi_mu){
+        X_con <- cbind(pihat, X_con)
+    } 
+    if (include_pi_tau) {
+        X_mod <- cbind(pihat, X_mod)
+    }
 
     if (is.null(random_seed)) {
         set_random_seed <- FALSE
@@ -108,6 +163,16 @@ XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, 
         tau_mod <- 0.1 * var(y) / num_trees_mod
         cat("tau_mod = 0.1*var(y)/num_trees_mod, default value. \n")
     }
+    
+    if (is.null(tau_con_pi)) {
+        tau_con_pi <- 0.6 * var(y) / num_trees_con_pi
+        cat("tau_con_pi = 0.6*var(y)/num_trees_con_pi, default value. \n")
+    }
+    
+    if (is.null(tau_mod_pi)) {
+        tau_mod_pi <- 0.1 * var(y) / num_trees_mod_pi
+        cat("tau_mod_pi = 0.1*var(y)/num_trees_mod_pi, default value. \n")
+    }
 
     if (is.null(mtry_con)) {
         mtry_con <- dim(X_con)[2]
@@ -128,10 +193,35 @@ XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, 
         mtry_mod <- dim(X_mod)[2]
         cat("mtry_mod cannot exceed p_mod, set to mtry_mod = p_mod. \n")
     }
+    
+    if (is.null(mtry_con_pi)) {
+        mtry_con_pi <- dim(pi_X_con)[2]
+        cat("mtry_con_pi = dim(pi_X_con), use all variables. \n")
+    }
+    
+    if (mtry_con_pi > dim(pi_X_con)[2]) {
+        mtry_con_pi <- dim(pi_X_con)[2]
+        cat("mtry_con_pi cannot exceed dim(pi_X_con), set to mtry_con_pi = dim(pi_X_con) \n")
+    }
+    
+    if (is.null(mtry_mod_pi)) {
+        mtry_mod_pi <- dim(pi_X_mod)[2]
+        cat("mtry_mod_pi = dim(pi_X_mod), use all variables. \n")
+    }
+    
+    if (mtry_mod_pi > dim(pi_X_mod)[2]) {
+        mtry_mod_pi <- dim(pi_X_mod)[2]
+        cat("mtry_mod_pi cannot exceed dim(pi_X_mod), set to mtry_mod_pi = dim(pi_X_mod) \n")
+    }
 
     if (p_categorical_con > dim(X_con)[2]) {
         p_categorical_con <- dim(X_con)[2]
-        stop("p_categorical cannot exceed p")
+        stop("p_categorical_con cannot exceed p_con")
+    }
+    
+    if (p_categorical_mod > dim(X_mod)[2]) {
+        p_categorical_mod <- dim(X_mod)[2]
+        stop("p_categorical_mod cannot exceed p_mod")
     }
     # check input type
 
@@ -143,6 +233,8 @@ XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, 
     check_positive_integer(num_cutpoints, "num_cutpoints")
     check_positive_integer(num_trees_con, "num_trees_con")
     check_positive_integer(num_trees_mod, "num_trees_mod")
+    check_positive_integer(num_trees_con_pi, "num_trees_con_pi")
+    check_positive_integer(num_trees_mod_pi, "num_trees_mod_pi")
 
     check_scalar(tau_con, "tau_con")
     check_scalar(tau_mod, "tau_mod")
@@ -153,7 +245,14 @@ XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, 
     check_scalar(beta_mod, "beta_mod")
     check_scalar(kap, "kap")
     check_scalar(s, "s")
-
+    
+    check_scalar(tau_con_pi, "tau_con_pi")
+    check_scalar(tau_mod_pi, "tau_mod_pi")
+    check_scalar(alpha_con_pi, "alpha_con_pi")
+    check_scalar(beta_con_pi, "beta_con_pi")
+    check_scalar(alpha_mod_pi, "alpha_mod_pi")
+    check_scalar(beta_mod_pi, "beta_mod_pi")
+    
     # center the outcome variable
     meany <- mean(y)
     sdy <- sd(y)
@@ -165,7 +264,7 @@ XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, 
 
     obj <- XBCF_discrete_propensity_shrinkage_cpp(
         y, Z, X_con, X_mod, num_trees_con, num_trees_mod, 
-        X_con_pi, X_mod_pi, num_trees_con_pi, num_trees_mod_pi, 
+        pi_X_con, pi_X_mod, num_trees_con_pi, num_trees_mod_pi, 
         num_sweeps, max_depth, Nmin, num_cutpoints, 
         alpha_con, beta_con, alpha_mod, beta_mod, tau_con, tau_mod, 
         alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, tau_con_pi, tau_mod_pi, 
