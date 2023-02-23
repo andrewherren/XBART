@@ -10,7 +10,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////////////
 
-void XBCFDiscreteModel::incSuffStat(State &state, size_t index_next_obs, std::vector<double> &suffstats)
+void XBCFDiscretePropensityShrinkageModel::incSuffStat(State &state, size_t index_next_obs, std::vector<double> &suffstats)
 {
     if (state.treatment_flag)
     {
@@ -47,7 +47,7 @@ void XBCFDiscreteModel::incSuffStat(State &state, size_t index_next_obs, std::ve
     return;
 }
 
-void XBCFDiscreteModel::samplePars(State &state, std::vector<double> &suff_stat, std::vector<double> &theta_vector, double &prob_leaf)
+void XBCFDiscretePropensityShrinkageModel::samplePars(State &state, std::vector<double> &suff_stat, std::vector<double> &theta_vector, double &prob_leaf)
 {
     std::normal_distribution<double> normal_samp(0.0, 1.0);
 
@@ -95,7 +95,7 @@ void XBCFDiscreteModel::samplePars(State &state, std::vector<double> &suff_stat,
     return;
 }
 
-void XBCFDiscreteModel::update_state(State &state, size_t tree_ind, X_struct &x_struct, size_t ind)
+void XBCFDiscretePropensityShrinkageModel::update_state(State &state, size_t tree_ind, X_struct &x_struct, size_t ind)
 {
     // Draw Sigma
     std::vector<double> full_residual_trt(state.N_trt);
@@ -141,7 +141,7 @@ void XBCFDiscreteModel::update_state(State &state, size_t tree_ind, X_struct &x_
     return;
 }
 
-void XBCFDiscreteModel::update_tau(State &state, size_t tree_ind, size_t sweeps, vector<vector<tree>> &trees)
+void XBCFDiscretePropensityShrinkageModel::update_tau(State &state, size_t tree_ind, size_t sweeps, vector<vector<tree>> &trees)
 {
     std::vector<tree *> leaf_nodes;
     trees[sweeps][tree_ind].getbots(leaf_nodes);
@@ -171,7 +171,7 @@ void XBCFDiscreteModel::update_tau(State &state, size_t tree_ind, size_t sweeps,
     return;
 };
 
-void XBCFDiscreteModel::update_tau_per_forest(State &state, size_t sweeps, vector<vector<tree>> &trees)
+void XBCFDiscretePropensityShrinkageModel::update_tau_per_forest(State &state, size_t sweeps, vector<vector<tree>> &trees)
 {
     std::vector<tree *> leaf_nodes;
     for (size_t tree_ind = 0; tree_ind < state.num_trees; tree_ind++)
@@ -202,7 +202,7 @@ void XBCFDiscreteModel::update_tau_per_forest(State &state, size_t sweeps, vecto
     return;
 }
 
-void XBCFDiscreteModel::initialize_root_suffstat(State &state, std::vector<double> &suff_stat)
+void XBCFDiscretePropensityShrinkageModel::initialize_root_suffstat(State &state, std::vector<double> &suff_stat)
 {
     suff_stat.resize(4);
     std::fill(suff_stat.begin(), suff_stat.end(), 0.0);
@@ -213,7 +213,7 @@ void XBCFDiscreteModel::initialize_root_suffstat(State &state, std::vector<doubl
     return;
 }
 
-void XBCFDiscreteModel::updateNodeSuffStat(State &state, std::vector<double> &suff_stat, matrix<size_t> &Xorder_std, size_t &split_var, size_t row_ind)
+void XBCFDiscretePropensityShrinkageModel::updateNodeSuffStat(State &state, std::vector<double> &suff_stat, matrix<size_t> &Xorder_std, size_t &split_var, size_t row_ind)
 {
 
     incSuffStat(state, Xorder_std[split_var][row_ind], suff_stat);
@@ -221,7 +221,7 @@ void XBCFDiscreteModel::updateNodeSuffStat(State &state, std::vector<double> &su
     return;
 }
 
-void XBCFDiscreteModel::calculateOtherSideSuffStat(std::vector<double> &parent_suff_stat, std::vector<double> &lchild_suff_stat, std::vector<double> &rchild_suff_stat, size_t &N_parent, size_t &N_left, size_t &N_right, bool &compute_left_side)
+void XBCFDiscretePropensityShrinkageModel::calculateOtherSideSuffStat(std::vector<double> &parent_suff_stat, std::vector<double> &lchild_suff_stat, std::vector<double> &rchild_suff_stat, size_t &N_parent, size_t &N_left, size_t &N_right, bool &compute_left_side)
 {
     // in function split_xorder_std_categorical, for efficiency, the function only calculates suff stat of ONE child
     // this function calculate the other side based on parent and the other child
@@ -236,7 +236,7 @@ void XBCFDiscreteModel::calculateOtherSideSuffStat(std::vector<double> &parent_s
     return;
 }
 
-double XBCFDiscreteModel::likelihood(std::vector<double> &temp_suff_stat, std::vector<double> &suff_stat_all, size_t N_left, bool left_side, bool no_split, State &state) const
+double XBCFDiscretePropensityShrinkageModel::likelihood(std::vector<double> &temp_suff_stat, std::vector<double> &suff_stat_all, size_t N_left, bool left_side, bool no_split, State &state) const
 {
     // likelihood equation for XBCF with discrete binary treatment variable Z
 
@@ -289,7 +289,7 @@ double XBCFDiscreteModel::likelihood(std::vector<double> &temp_suff_stat, std::v
     return 0.5 * log(1 / denominator) + 0.5 * pow(s_psi_squared, 2) * tau_use / denominator;
 }
 
-void XBCFDiscreteModel::ini_residual_std(State &state)
+void XBCFDiscretePropensityShrinkageModel::ini_residual_std(State &state)
 {
     // initialize the vector of full residuals
     double b_value;
@@ -302,7 +302,7 @@ void XBCFDiscreteModel::ini_residual_std(State &state)
     return;
 }
 
-void XBCFDiscreteModel::predict_std(matrix<double> &Ztestpointer, const double *Xtestpointer_con, const double *Xtestpointer_mod, size_t N_test, size_t p_con, size_t p_mod, size_t num_trees_con, size_t num_trees_mod, size_t num_sweeps, matrix<double> &yhats_test_xinfo, matrix<double> &prognostic_xinfo, matrix<double> &treatment_xinfo, vector<vector<tree>> &trees_con, vector<vector<tree>> &trees_mod)
+void XBCFDiscretePropensityShrinkageModel::predict_std(matrix<double> &Ztestpointer, const double *Xtestpointer_con, const double *Xtestpointer_mod, size_t N_test, size_t p_con, size_t p_mod, size_t num_trees_con, size_t num_trees_mod, size_t num_sweeps, matrix<double> &yhats_test_xinfo, matrix<double> &prognostic_xinfo, matrix<double> &treatment_xinfo, vector<vector<tree>> &trees_con, vector<vector<tree>> &trees_mod)
 {
     // predict the output as a matrix
     matrix<double> output_mod;
@@ -346,7 +346,7 @@ void XBCFDiscreteModel::predict_std(matrix<double> &Ztestpointer, const double *
     return;
 }
 
-void XBCFDiscreteModel::ini_tau_mu_fit(State &state)
+void XBCFDiscretePropensityShrinkageModel::ini_tau_mu_fit(State &state)
 {
     double value = state.ini_var_yhat;
     for (size_t i = 0; i < (*state.residual_std)[0].size(); i++)
@@ -357,7 +357,7 @@ void XBCFDiscreteModel::ini_tau_mu_fit(State &state)
     return;
 }
 
-void XBCFDiscreteModel::set_treatmentflag(State &state, bool value)
+void XBCFDiscretePropensityShrinkageModel::set_treatmentflag(State &state, bool value)
 {
     state.treatment_flag = value;
     if (value)
@@ -388,7 +388,7 @@ void XBCFDiscreteModel::set_treatmentflag(State &state, bool value)
     return;
 }
 
-void XBCFDiscreteModel::subtract_old_tree_fit(size_t tree_ind, State &state, X_struct &x_struct)
+void XBCFDiscretePropensityShrinkageModel::subtract_old_tree_fit(size_t tree_ind, State &state, X_struct &x_struct)
 {
     if (state.treatment_flag)
     {
@@ -407,7 +407,7 @@ void XBCFDiscreteModel::subtract_old_tree_fit(size_t tree_ind, State &state, X_s
     return;
 }
 
-void XBCFDiscreteModel::add_new_tree_fit(size_t tree_ind, State &state, X_struct &x_struct)
+void XBCFDiscretePropensityShrinkageModel::add_new_tree_fit(size_t tree_ind, State &state, X_struct &x_struct)
 {
 
     if (state.treatment_flag)
@@ -427,7 +427,7 @@ void XBCFDiscreteModel::add_new_tree_fit(size_t tree_ind, State &state, X_struct
     return;
 }
 
-void XBCFDiscreteModel::update_partial_residuals(size_t tree_ind, State &state, X_struct &x_struct)
+void XBCFDiscretePropensityShrinkageModel::update_partial_residuals(size_t tree_ind, State &state, X_struct &x_struct)
 {
     if (state.treatment_flag)
     {
@@ -464,7 +464,7 @@ void XBCFDiscreteModel::update_partial_residuals(size_t tree_ind, State &state, 
     return;
 }
 
-void XBCFDiscreteModel::update_split_counts(State &state, size_t tree_ind)
+void XBCFDiscretePropensityShrinkageModel::update_split_counts(State &state, size_t tree_ind)
 {
     if (state.treatment_flag)
     {
@@ -479,7 +479,7 @@ void XBCFDiscreteModel::update_split_counts(State &state, size_t tree_ind)
     return;
 }
 
-void XBCFDiscreteModel::update_a(State &state)
+void XBCFDiscretePropensityShrinkageModel::update_a(State &state)
 {
     // update parameter a, y = a * mu + b_z * tau
 
@@ -529,7 +529,7 @@ void XBCFDiscreteModel::update_a(State &state)
     return;
 }
 
-void XBCFDiscreteModel::update_b(State &state)
+void XBCFDiscretePropensityShrinkageModel::update_b(State &state)
 {
     // update b0 and b1 for XBCF discrete treatment
 

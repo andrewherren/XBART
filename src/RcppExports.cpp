@@ -226,6 +226,73 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// XBCF_discrete_propensity_shrinkage_cpp
+Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(arma::mat y, arma::mat Z, arma::mat X_con, arma::mat X_mod, size_t num_trees_con, size_t num_trees_mod, arma::mat pi_X_con, arma::mat pi_X_mod, size_t num_trees_con_pi, size_t num_trees_mod_pi, size_t num_sweeps, size_t max_depth, size_t n_min, size_t num_cutpoints, double alpha_con, double beta_con, double alpha_mod, double beta_mod, double tau_con, double tau_mod, double alpha_con_pi, double beta_con_pi, double alpha_mod_pi, double beta_mod_pi, double tau_con_pi, double tau_mod_pi, double no_split_penalty, size_t burnin, size_t mtry_con, size_t mtry_mod, size_t mtry_con_pi, size_t mtry_mod_pi, size_t p_categorical_con, size_t p_categorical_mod, size_t p_categorical_con_pi, size_t p_categorical_mod_pi, double kap, double s, double tau_con_kap, double tau_con_s, double tau_mod_kap, double tau_mod_s, double tau_con_pi_kap, double tau_con_pi_s, double tau_mod_pi_kap, double tau_mod_pi_s, bool pr_scale, bool trt_scale, bool a_scaling, bool b_scaling, bool verbose, bool sampling_tau, bool parallel, bool set_random_seed, size_t random_seed, bool sample_weights, double nthread);
+RcppExport SEXP _XBART_XBCF_discrete_propensity_shrinkage_cpp(SEXP ySEXP, SEXP ZSEXP, SEXP X_conSEXP, SEXP X_modSEXP, SEXP num_trees_conSEXP, SEXP num_trees_modSEXP, SEXP pi_X_conSEXP, SEXP pi_X_modSEXP, SEXP num_trees_con_piSEXP, SEXP num_trees_mod_piSEXP, SEXP num_sweepsSEXP, SEXP max_depthSEXP, SEXP n_minSEXP, SEXP num_cutpointsSEXP, SEXP alpha_conSEXP, SEXP beta_conSEXP, SEXP alpha_modSEXP, SEXP beta_modSEXP, SEXP tau_conSEXP, SEXP tau_modSEXP, SEXP alpha_con_piSEXP, SEXP beta_con_piSEXP, SEXP alpha_mod_piSEXP, SEXP beta_mod_piSEXP, SEXP tau_con_piSEXP, SEXP tau_mod_piSEXP, SEXP no_split_penaltySEXP, SEXP burninSEXP, SEXP mtry_conSEXP, SEXP mtry_modSEXP, SEXP mtry_con_piSEXP, SEXP mtry_mod_piSEXP, SEXP p_categorical_conSEXP, SEXP p_categorical_modSEXP, SEXP p_categorical_con_piSEXP, SEXP p_categorical_mod_piSEXP, SEXP kapSEXP, SEXP sSEXP, SEXP tau_con_kapSEXP, SEXP tau_con_sSEXP, SEXP tau_mod_kapSEXP, SEXP tau_mod_sSEXP, SEXP tau_con_pi_kapSEXP, SEXP tau_con_pi_sSEXP, SEXP tau_mod_pi_kapSEXP, SEXP tau_mod_pi_sSEXP, SEXP pr_scaleSEXP, SEXP trt_scaleSEXP, SEXP a_scalingSEXP, SEXP b_scalingSEXP, SEXP verboseSEXP, SEXP sampling_tauSEXP, SEXP parallelSEXP, SEXP set_random_seedSEXP, SEXP random_seedSEXP, SEXP sample_weightsSEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_con(X_conSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X_mod(X_modSEXP);
+    Rcpp::traits::input_parameter< size_t >::type num_trees_con(num_trees_conSEXP);
+    Rcpp::traits::input_parameter< size_t >::type num_trees_mod(num_trees_modSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type pi_X_con(pi_X_conSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type pi_X_mod(pi_X_modSEXP);
+    Rcpp::traits::input_parameter< size_t >::type num_trees_con_pi(num_trees_con_piSEXP);
+    Rcpp::traits::input_parameter< size_t >::type num_trees_mod_pi(num_trees_mod_piSEXP);
+    Rcpp::traits::input_parameter< size_t >::type num_sweeps(num_sweepsSEXP);
+    Rcpp::traits::input_parameter< size_t >::type max_depth(max_depthSEXP);
+    Rcpp::traits::input_parameter< size_t >::type n_min(n_minSEXP);
+    Rcpp::traits::input_parameter< size_t >::type num_cutpoints(num_cutpointsSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_con(alpha_conSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_con(beta_conSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_mod(alpha_modSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_mod(beta_modSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_con(tau_conSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_mod(tau_modSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_con_pi(alpha_con_piSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_con_pi(beta_con_piSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_mod_pi(alpha_mod_piSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_mod_pi(beta_mod_piSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_con_pi(tau_con_piSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_mod_pi(tau_mod_piSEXP);
+    Rcpp::traits::input_parameter< double >::type no_split_penalty(no_split_penaltySEXP);
+    Rcpp::traits::input_parameter< size_t >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< size_t >::type mtry_con(mtry_conSEXP);
+    Rcpp::traits::input_parameter< size_t >::type mtry_mod(mtry_modSEXP);
+    Rcpp::traits::input_parameter< size_t >::type mtry_con_pi(mtry_con_piSEXP);
+    Rcpp::traits::input_parameter< size_t >::type mtry_mod_pi(mtry_mod_piSEXP);
+    Rcpp::traits::input_parameter< size_t >::type p_categorical_con(p_categorical_conSEXP);
+    Rcpp::traits::input_parameter< size_t >::type p_categorical_mod(p_categorical_modSEXP);
+    Rcpp::traits::input_parameter< size_t >::type p_categorical_con_pi(p_categorical_con_piSEXP);
+    Rcpp::traits::input_parameter< size_t >::type p_categorical_mod_pi(p_categorical_mod_piSEXP);
+    Rcpp::traits::input_parameter< double >::type kap(kapSEXP);
+    Rcpp::traits::input_parameter< double >::type s(sSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_con_kap(tau_con_kapSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_con_s(tau_con_sSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_mod_kap(tau_mod_kapSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_mod_s(tau_mod_sSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_con_pi_kap(tau_con_pi_kapSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_con_pi_s(tau_con_pi_sSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_mod_pi_kap(tau_mod_pi_kapSEXP);
+    Rcpp::traits::input_parameter< double >::type tau_mod_pi_s(tau_mod_pi_sSEXP);
+    Rcpp::traits::input_parameter< bool >::type pr_scale(pr_scaleSEXP);
+    Rcpp::traits::input_parameter< bool >::type trt_scale(trt_scaleSEXP);
+    Rcpp::traits::input_parameter< bool >::type a_scaling(a_scalingSEXP);
+    Rcpp::traits::input_parameter< bool >::type b_scaling(b_scalingSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< bool >::type sampling_tau(sampling_tauSEXP);
+    Rcpp::traits::input_parameter< bool >::type parallel(parallelSEXP);
+    Rcpp::traits::input_parameter< bool >::type set_random_seed(set_random_seedSEXP);
+    Rcpp::traits::input_parameter< size_t >::type random_seed(random_seedSEXP);
+    Rcpp::traits::input_parameter< bool >::type sample_weights(sample_weightsSEXP);
+    Rcpp::traits::input_parameter< double >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(XBCF_discrete_propensity_shrinkage_cpp(y, Z, X_con, X_mod, num_trees_con, num_trees_mod, pi_X_con, pi_X_mod, num_trees_con_pi, num_trees_mod_pi, num_sweeps, max_depth, n_min, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, tau_con, tau_mod, alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, tau_con_pi, tau_mod_pi, no_split_penalty, burnin, mtry_con, mtry_mod, mtry_con_pi, mtry_mod_pi, p_categorical_con, p_categorical_mod, p_categorical_con_pi, p_categorical_mod_pi, kap, s, tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, tau_con_pi_kap, tau_con_pi_s, tau_mod_pi_kap, tau_mod_pi_s, pr_scale, trt_scale, a_scaling, b_scaling, verbose, sampling_tau, parallel, set_random_seed, random_seed, sample_weights, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
 // xbart_predict
 Rcpp::List xbart_predict(mat X, double y_mean, Rcpp::XPtr<std::vector<std::vector<tree>>> tree_pnt);
 RcppExport SEXP _XBART_xbart_predict(SEXP XSEXP, SEXP y_meanSEXP, SEXP tree_pntSEXP) {
@@ -394,6 +461,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_XBART_XBART_multinomial_cpp", (DL_FUNC) &_XBART_XBART_multinomial_cpp, 32},
     {"_XBART_XBCF_continuous_cpp", (DL_FUNC) &_XBART_XBCF_continuous_cpp, 35},
     {"_XBART_XBCF_discrete_cpp", (DL_FUNC) &_XBART_XBCF_discrete_cpp, 39},
+    {"_XBART_XBCF_discrete_propensity_shrinkage_cpp", (DL_FUNC) &_XBART_XBCF_discrete_propensity_shrinkage_cpp, 57},
     {"_XBART_xbart_predict", (DL_FUNC) &_XBART_xbart_predict, 3},
     {"_XBART_XBCF_continuous_predict", (DL_FUNC) &_XBART_XBCF_continuous_predict, 5},
     {"_XBART_XBCF_discrete_predict", (DL_FUNC) &_XBART_XBCF_discrete_predict, 5},

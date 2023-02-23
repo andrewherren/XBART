@@ -163,7 +163,19 @@ XBCF.discrete <- function(y, Z, X_con, X_mod, pihat = NULL, num_trees_con = 30, 
         y <- (y - meany) / sdy
     }
 
-    obj <- XBCF_discrete_cpp(y, Z, X_con, X_mod, num_trees_con, num_trees_mod, num_sweeps, max_depth, Nmin, num_cutpoints, alpha_con, beta_con, alpha_mod, beta_mod, tau_con, tau_mod, no_split_penalty, burnin, mtry_con, mtry_mod, p_categorical_con, p_categorical_mod, kap, s, tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, pr_scale, trt_scale, a_scaling, b_scaling, verbose, update_tau, parallel, set_random_seed, random_seed, sample_weights, nthread)
+    obj <- XBCF_discrete_propensity_shrinkage_cpp(
+        y, Z, X_con, X_mod, num_trees_con, num_trees_mod, 
+        X_con_pi, X_mod_pi, num_trees_con_pi, num_trees_mod_pi, 
+        num_sweeps, max_depth, Nmin, num_cutpoints, 
+        alpha_con, beta_con, alpha_mod, beta_mod, tau_con, tau_mod, 
+        alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, tau_con_pi, tau_mod_pi, 
+        no_split_penalty, burnin, mtry_con, mtry_mod, mtry_con_pi, mtry_mod_pi, 
+        p_categorical_con, p_categorical_mod, p_categorical_con_pi, p_categorical_mod_pi, 
+        kap, s, tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, 
+        tau_con_pi_kap, tau_con_pi_s, tau_mod_pi_kap, tau_mod_pi_s, 
+        pr_scale, trt_scale, a_scaling, b_scaling, verbose, update_tau, parallel, 
+        set_random_seed, random_seed, sample_weights, nthread
+    )
 
     # store mean and sd in the model object (for predictions)
     obj$meany <- meany

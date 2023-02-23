@@ -13,7 +13,23 @@ using namespace arma;
 
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
-Rcpp::List XBCF_discrete_cpp(arma::mat y, arma::mat Z, arma::mat X_con, arma::mat X_mod, size_t num_trees_con, size_t num_trees_mod, size_t num_sweeps, size_t max_depth, size_t n_min, size_t num_cutpoints, double alpha_con, double beta_con, double alpha_mod, double beta_mod, double tau_con, double tau_mod, double no_split_penalty, size_t burnin = 1, size_t mtry_con = 0, size_t mtry_mod = 0, size_t p_categorical_con = 0, size_t p_categorical_mod = 0, double kap = 16, double s = 4, double tau_con_kap = 3, double tau_con_s = 0.5, double tau_mod_kap = 3, double tau_mod_s = 0.5, bool pr_scale = false, bool trt_scale = false, bool a_scaling = true, bool b_scaling = true, bool verbose = false, bool sampling_tau = true, bool parallel = true, bool set_random_seed = false, size_t random_seed = 0, bool sample_weights = true, double nthread = 0)
+Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
+    arma::mat y, arma::mat Z, 
+    arma::mat X_con, arma::mat X_mod, size_t num_trees_con, size_t num_trees_mod, 
+    arma::mat pi_X_con, arma::mat pi_X_mod, size_t num_trees_con_pi, size_t num_trees_mod_pi, 
+    size_t num_sweeps, size_t max_depth, size_t n_min, size_t num_cutpoints, 
+    double alpha_con, double beta_con, double alpha_mod, double beta_mod, double tau_con, double tau_mod, 
+    double alpha_con_pi, double beta_con_pi, double alpha_mod_pi, double beta_mod_pi, double tau_con_pi, double tau_mod_pi, 
+    double no_split_penalty, size_t burnin = 1, 
+    size_t mtry_con = 0, size_t mtry_mod = 0, size_t mtry_con_pi = 0, size_t mtry_mod_pi = 0, 
+    size_t p_categorical_con = 0, size_t p_categorical_mod = 0, size_t p_categorical_con_pi = 0, size_t p_categorical_mod_pi = 0, 
+    double kap = 16, double s = 4, 
+    double tau_con_kap = 3, double tau_con_s = 0.5, double tau_mod_kap = 3, double tau_mod_s = 0.5, 
+    double tau_con_pi_kap = 3, double tau_con_pi_s = 0.5, double tau_mod_pi_kap = 3, double tau_mod_pi_s = 0.5, 
+    bool pr_scale = false, bool trt_scale = false, 
+    bool a_scaling = true, bool b_scaling = true, 
+    bool verbose = false, bool sampling_tau = true, bool parallel = true, 
+    bool set_random_seed = false, size_t random_seed = 0, bool sample_weights = true, double nthread = 0)
 {
     if (parallel)
     {
@@ -34,17 +50,32 @@ Rcpp::List XBCF_discrete_cpp(arma::mat y, arma::mat Z, arma::mat X_con, arma::ma
     COUT << "size of X_con " << X_con.n_rows << " " << X_con.n_cols << endl;
     COUT << "size of X_mod " << X_mod.n_rows << " " << X_mod.n_cols << endl;
 
+    // number of total propensity score columns
+    size_t p_con_pi = pi_X_con.n_cols;
+    size_t p_mod_pi = pi_X_mod.n_cols;
+    
+    COUT << "size of pi_X_con " << pi_X_con.n_rows << " " << pi_X_con.n_cols << endl;
+    COUT << "size of pi_X_mod " << pi_X_mod.n_rows << " " << pi_X_mod.n_cols << endl;
+    
     // number of basis functions (1 in the case of the OG bcf)
     size_t p_z = Z.n_cols;
 
     // number of continuous variables
     size_t p_continuous_con = p_con - p_categorical_con;
     size_t p_continuous_mod = p_mod - p_categorical_mod;
+    
+    // number of continuous pi variables
+    size_t p_continuous_con_pi = p_con_pi - p_categorical_con_pi;
+    size_t p_continuous_mod_pi = p_mod_pi - p_categorical_mod_pi;
 
     // suppose first p_continuous variables are continuous, then categorical
     assert(mtry_con <= p_con);
 
     assert(mtry_mod <= p_mod);
+    
+    assert(mtry_con_pi <= p_con_pi);
+    
+    assert(mtry_mod_pi <= p_mod_pi);
 
     assert(burnin <= num_sweeps);
 
@@ -68,6 +99,26 @@ Rcpp::List XBCF_discrete_cpp(arma::mat y, arma::mat Z, arma::mat X_con, arma::ma
         COUT << "Sample " << mtry_mod << " out of " << p_mod << " variables when grow each treatment tree." << endl;
     }
 
+    if (mtry_con_pi == 0)
+    {
+        mtry_con_pi = p_con_pi;
+    }
+    
+    if (mtry_mod_pi == 0)
+    {
+        mtry_mod_pi = p_mod_pi;
+    }
+    
+    if (mtry_con_pi != p_con_pi)
+    {
+        COUT << "Sample " << mtry_con_pi << " out of " << p_con_pi << " variables when grow each propensity prognostic tree." << endl;
+    }
+    
+    if (mtry_mod_pi != p_mod_pi)
+    {
+        COUT << "Sample " << mtry_mod_pi << " out of " << p_mod_pi << " variables when grow each propensity treatment tree." << endl;
+    }
+    
     arma::umat Xorder_con(X_con.n_rows, X_con.n_cols);
     matrix<size_t> Xorder_std_con;
     ini_matrix(Xorder_std_con, N, p_con);
@@ -78,6 +129,16 @@ Rcpp::List XBCF_discrete_cpp(arma::mat y, arma::mat Z, arma::mat X_con, arma::ma
 
     cout << "size of Xorder con and mode " << Xorder_std_con.size() << " " << Xorder_std_con[0].size() << " " << Xorder_std_mod.size() << " " << Xorder_std_mod[0].size() << endl;
 
+    arma::umat pi_Xorder_con(pi_X_con.n_rows, pi_X_con.n_cols);
+    matrix<size_t> pi_Xorder_std_con;
+    ini_matrix(pi_Xorder_std_con, N, p_con_pi);
+    
+    arma::umat pi_Xorder_mod(pi_X_mod.n_rows, pi_X_mod.n_cols);
+    matrix<size_t> pi_Xorder_std_mod;
+    ini_matrix(pi_Xorder_std_mod, N, p_mod_pi);
+    
+    cout << "size of pi_Xorder con and mode " << pi_Xorder_std_con.size() << " " << pi_Xorder_std_con[0].size() << " " << pi_Xorder_std_mod.size() << " " << pi_Xorder_std_mod[0].size() << endl;
+    
     std::vector<double> y_std(N);
 
     double y_mean = 0.0;
@@ -104,6 +165,9 @@ Rcpp::List XBCF_discrete_cpp(arma::mat y, arma::mat Z, arma::mat X_con, arma::ma
     Rcpp::NumericMatrix X_std_con(N, p_con);
     Rcpp::NumericMatrix X_std_mod(N, p_mod);
 
+    Rcpp::NumericMatrix pi_X_std_con(N, p_con_pi);
+    Rcpp::NumericMatrix pi_X_std_mod(N, p_mod_pi);
+    
     matrix<double> Z_std;
     ini_matrix(Z_std, N, p_z);
 
