@@ -390,5 +390,5 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     
     COUT << "Created output list" << endl;
     
-    return output
+    return output;
 }
