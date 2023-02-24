@@ -88,11 +88,17 @@ predict.XBCFdiscretepropensityshrinkage <- function(object, X_con, X_mod, pi_X_c
     
     X_con <- as.matrix(X_con)
     X_mod <- as.matrix(X_mod)
+    pi_X_con <- as.matrix(pi_X_con)
+    pi_X_mod <- as.matrix(pi_X_mod)
     Z <- as.matrix(Z)
     out_con <- json_to_r(object$tree_json_con)
+    cat("unserialized tree_con from json \n")
     out_mod <- json_to_r(object$tree_json_mod)
+    cat("unserialized tree_mod from json \n")
     out_con_pi <- json_to_r(object$tree_json_con_pi)
+    cat("unserialized tree_con_pi from json \n")
     out_mod_pi <- json_to_r(object$tree_json_mod_pi)
+    cat("unserialized tree_mod_pi from json \n")
     obj <- .Call("_XBART_XBCF_discrete_propensity_shrinkage_predict", X_con, X_mod, Z, pi_X_con, pi_X_mod, out_con$model_list$tree_pnt, out_mod$model_list$tree_pnt, out_con_pi$model_list$tree_pnt, out_mod_pi$model_list$tree_pnt)
     
     burnin <- burnin

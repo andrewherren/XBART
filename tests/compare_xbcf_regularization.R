@@ -4,6 +4,10 @@
 # trees that use enough propensity scores and trees that use all covariates 
 # might improve estimator RMSE since we can regularize the "necessary 
 # deconfounding" propensity trees less than the covariate-based trees).
+# 
+# NOTE: for debugging purposes, have commented out the calls to XBCF.discrete 
+# and predict() since memory access errors appear to be accruing only 
+# in XBCF.discrete.propensity.shrinkage
 ###############################################################################
 
 # Load Libraries
@@ -13,10 +17,11 @@ library(dbarts)
 
 #### 1. DATA GENERATING PROCESS
 n <- 500
-n_sim <- 5
+n_sim <- 20
 sim_results <- matrix(NA, nrow = n_sim, ncol = 6)
 print_during_sim <- F
 plot_during_sim <- F
+set.seed(1234)
 
 for (i in 1:n_sim){
     # Covariates
@@ -90,87 +95,90 @@ for (i in 1:n_sim){
     }
     
     # Define pi(X) covariates for prognostic and treatment models (the same in this case)
-    pi_x_con = cbind(pihat.full, pihat.subset)
-    pi_x_mod <- cbind(pihat.full, pihat.subset)
+    # pi_x_con = cbind(pihat.full, pihat.subset)
+    # pi_x_mod <- cbind(pihat.full, pihat.subset)
     
     # Define covariates for prognostic and treatment models (the same in this case)
     x_con = x
     x_mod <- x
+    pi_x_con <- x
+    pi_x_mod <- x
     
     #### 2. Model Fitting and Estimation
     
     #### 2.a. Default XBCF
 
-    # Run `num_sweeps` of the algorithm
-    t1 = proc.time()
-    xbcf.fit <- XBART::XBCF.discrete(
-        y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pihat.full,
-        p_categorical_con = 5, p_categorical_mod = 5,
-        num_sweeps = 60, burnin = 30, parallel = T
-    )
-    t1 = proc.time() - t1
-    
-    # Compute tauhat(X)
-    pred_xbcf <- predict(xbcf.fit, X_con = x_con, X_mod = x_mod, Z = z, pihat = pihat.full, burnin = 30)
-    tauhats_xbcf <- pred_xbcf$tau.adj.mean
-    
-    # Evaluate RMSE and runtime
-    ate_xbcf <- mean(tauhats_xbcf)
-    rmse_xbcf <- sqrt(mean((tauhats_xbcf - tau)^2))
-    runtime_xbcf <- round(as.list(t1)$elapsed, 2)
-    if (print_during_sim){
-        print(paste0("XBCF RMSE: ", rmse_xbcf))
-        print(paste0("XBCF Runtime: ", runtime_xbcf, " seconds"))
-    }
-    
-    sim_results[i,1] <- rmse_xbcf
-    sim_results[i,3] <- ate_xbcf
-    sim_results[i,5] <- runtime_xbcf
-    
-    # Plot results
-    if (plot_during_sim){
-        plot(tau, tauhats_xbcf, main = "XBCF", xlab = "Tau", ylab = "Tauhat")
-        abline(a=0, b=1)
-    }
+    # # Run `num_sweeps` of the algorithm
+    # t1 = proc.time()
+    # xbcf.fit <- XBART::XBCF.discrete(
+    #     y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pihat.full,
+    #     p_categorical_con = 5, p_categorical_mod = 5,
+    #     num_sweeps = 60, burnin = 30, parallel = F, random_seed = 1234
+    # )
+    # t1 = proc.time() - t1
+
+    # # Compute tauhat(X)
+    # pred_xbcf <- predict(xbcf.fit, X_con = x_con, X_mod = x_mod, Z = z, pihat = pihat.full, burnin = 30)
+    # tauhats_xbcf <- pred_xbcf$tau.adj.mean
+    # 
+    # # Evaluate RMSE and runtime
+    # ate_xbcf <- mean(tauhats_xbcf)
+    # rmse_xbcf <- sqrt(mean((tauhats_xbcf - tau)^2))
+    # runtime_xbcf <- round(as.list(t1)$elapsed, 2)
+    # if (print_during_sim){
+    #     print(paste0("XBCF RMSE: ", rmse_xbcf))
+    #     print(paste0("XBCF Runtime: ", runtime_xbcf, " seconds"))
+    # }
+    # 
+    # sim_results[i,1] <- rmse_xbcf
+    # sim_results[i,3] <- ate_xbcf
+    # sim_results[i,5] <- runtime_xbcf
+    # 
+    # # Plot results
+    # if (plot_during_sim){
+    #     plot(tau, tauhats_xbcf, main = "XBCF", xlab = "Tau", ylab = "Tauhat")
+    #     abline(a=0, b=1)
+    # }
     
     #### 2.b. XBCF with propensity shrinkage
-    
+
     # Run `num_sweeps` of the algorithm
     t1 = proc.time()
     xbcf.fit.prop.shrinkage <- XBART::XBCF.discrete.propensity.shrinkage(
         y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pihat.full,
         pi_X_con = pi_x_con, pi_X_mod = pi_x_mod,
         p_categorical_con = 5, p_categorical_mod = 5,
-        num_sweeps = 60, burnin = 30, parallel = T
+        num_sweeps = 60, burnin = 30, parallel = F,
+        random_seed = 1234, verbose = T
     )
     t1 = proc.time() - t1
-    
-    # Compute tauhat(X)
-    pred_xbcf_prop_shrinkage <- predict(xbcf.fit.prop.shrinkage, X_con = x_con, X_mod = x_mod, Z = z, pi_X_con = pi_x_con, pi_X_mod = pi_x_mod, pihat = pihat.full, burnin = 30)
-    tauhats_xbcf_prop_shrinkage <- pred_xbcf_prop_shrinkage$tau.adj.mean
-    
-    # Evaluate RMSE and runtime
-    ate_xbcf_prop_shrinkage <- mean(tauhats_xbcf_prop_shrinkage)
-    rmse_xbcf_prop_shrinkage <- sqrt(mean((tauhats_xbcf_prop_shrinkage - tau)^2))
-    runtime_xbcf_prop_shrinkage <- round(as.list(t1)$elapsed, 2)
-    if (print_during_sim){
-        print(paste0("XBCF Propensity Shrinkage RMSE: ", rmse_xbcf_prop_shrinkage))
-        print(paste0("XBCF Propensity Shrinkage Runtime: ", runtime_xbcf_prop_shrinkage, " seconds"))
-    }
-    
-    sim_results[i,2] <- rmse_xbcf_prop_shrinkage
-    sim_results[i,4] <- ate_xbcf_prop_shrinkage
-    sim_results[i,6] <- runtime_xbcf_prop_shrinkage
-    
-    # Plot results
-    if (plot_during_sim){
-        plot(tau, tauhats_xbcf_prop_shrinkage, main = "XBCF with Propensity Shrinkage", xlab = "Tau", ylab = "Tauhat")
-        abline(a=0, b=1)
-    }
+
+    # # Compute tauhat(X)
+    # pred_xbcf_prop_shrinkage <- predict(xbcf.fit.prop.shrinkage, X_con = x_con, X_mod = x_mod, pi_X_con = x_con, pi_X_mod = x_mod, Z = z, burnin = 30)
+    # tauhats_xbcf_prop_shrinkage <- pred_xbcf_prop_shrinkage$tau.adj.mean
+    # 
+    # # Evaluate RMSE and runtime
+    # ate_xbcf_prop_shrinkage <- mean(tauhats_xbcf_prop_shrinkage)
+    # rmse_xbcf_prop_shrinkage <- sqrt(mean((tauhats_xbcf_prop_shrinkage - tau)^2))
+    # runtime_xbcf_prop_shrinkage <- round(as.list(t1)$elapsed, 2)
+    # if (print_during_sim){
+    #     print(paste0("XBCF Propensity Shrinkage RMSE: ", rmse_xbcf_prop_shrinkage))
+    #     print(paste0("XBCF Propensity Shrinkage Runtime: ", runtime_xbcf_prop_shrinkage, " seconds"))
+    # }
+    # 
+    # sim_results[i,2] <- rmse_xbcf_prop_shrinkage
+    # sim_results[i,4] <- ate_xbcf_prop_shrinkage
+    # sim_results[i,6] <- runtime_xbcf_prop_shrinkage
+    # 
+    # # Plot results
+    # if (plot_during_sim){
+    #     plot(tau, tauhats_xbcf_prop_shrinkage, main = "XBCF with Propensity Shrinkage", xlab = "Tau", ylab = "Tauhat")
+    #     abline(a=0, b=1)
+    # }
 }
 
-(rmse_mean <- apply(sim_results[,c(1,2),drop=F], 2, mean))
-(ate_mean <- apply(sim_results[,c(3,4),drop=F], 2, mean))
-(ate_sd <- apply(sim_results[,c(3,4),drop=F], 2, sd))
-(ate_bias <- (apply(sim_results[,c(3,4),drop=F], 2, mean)-2))
-(ate_rmse <- sqrt(ate_bias^2 + ate_sd^2))
+# (rmse_mean <- apply(sim_results[,c(1,2),drop=F], 2, mean))
+# (ate_mean <- apply(sim_results[,c(3,4),drop=F], 2, mean))
+# (ate_sd <- apply(sim_results[,c(3,4),drop=F], 2, sd))
+# (ate_bias <- (apply(sim_results[,c(3,4),drop=F], 2, mean)-2))
+# (ate_rmse <- sqrt(ate_bias^2 + ate_sd^2))

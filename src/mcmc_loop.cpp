@@ -635,50 +635,50 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
         
         // prognostic forest, using pi(X)
         model->set_flags(state, 0, 1);
-        
+
         for (size_t tree_ind = 0; tree_ind < state.num_trees_con_pi; tree_ind++)
         {
             if (verbose)
             {
-                COUT << "sweep " << sweeps << " tree " << tree_ind << endl;
+                COUT << "sweep " << sweeps << " mu(pi) tree " << tree_ind << endl;
             }
-            
+
             // Draw Sigma
             model->update_state(state, tree_ind, x_struct_con_pi, 0);
-            
+
             sigma0_draw_xinfo[sweeps][tree_ind] = state.sigma_vec[0];
-            
+
             if (state.use_all && (sweeps > state.burnin) && (state.mtry != state.p))
             {
                 state.use_all = false;
             }
-            
+
             // clear counts of splits for one tree
             (*state.split_count_current_tree).resize(state.p_con_pi);
             std::fill((*state.split_count_current_tree).begin(), (*state.split_count_current_tree).end(), 0.0);
-            
+
             // subtract old tree for sampling case
             if (state.sample_weights)
             {
                 (*state.mtry_weight_current_tree_con_pi) = (*state.mtry_weight_current_tree_con_pi) - (*state.split_count_all_tree_con_pi)[tree_ind];
                 (*state.mtry_weight_current_tree) = (*state.mtry_weight_current_tree_con_pi);
             }
-            
+
             // update tau_fit from full fit to partial fit
             model->subtract_old_tree_fit(tree_ind, state, x_struct_con_pi);
-            
+
             // calculate partial residuals based on partial fit
             model->update_partial_residuals(tree_ind, state, x_struct_con_pi);
-            
+
             model->initialize_root_suffstat(state, trees_con_pi[sweeps][tree_ind].suff_stat);
-            
+
             trees_con_pi[sweeps][tree_ind].grow_from_root(state, pi_Xorder_std_con, x_struct_con_pi.X_counts, x_struct_con_pi.X_num_unique, model, x_struct_con_pi, sweeps, tree_ind);
-            
+
             // update tau_fit from partial fit to full fit
             model->add_new_tree_fit(tree_ind, state, x_struct_con_pi);
-            
+
             model->update_split_counts(state, tree_ind);
-            
+
             if (sweeps >= state.burnin)
             {
                 for (size_t i = 0; i < (*state.split_count_all_con_pi).size(); i++)
@@ -686,7 +686,7 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
                     (*state.split_count_all_con_pi)[i] += (*state.split_count_current_tree)[i];
                 }
             }
-            
+
             if (sweeps != 0)
             {
                 if (state.a_scaling)
@@ -700,12 +700,14 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
                     model->update_b_pi(state);
                 }
             }
+            COUT << "a = " << state.a << " a_pi = " << state.a_pi << " b = " << state.b_vec << " b_pi = " << state.b_vec_pi << endl;
         }
-        
+
         if (model->sampling_tau)
         {
             model->update_tau_per_forest(state, sweeps, trees_con_pi);
         }
+        COUT << "tau_con_pi = " << model->tau_con_pi << endl;
         
         // prognostic forest, using X
         model->set_flags(state, 0, 0);
@@ -714,7 +716,7 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
         {
             if (verbose)
             {
-                COUT << "sweep " << sweeps << " tree " << tree_ind << endl;
+                COUT << "sweep " << sweeps << " mu(x) tree " << tree_ind << endl;
             }
             
             // Draw Sigma
@@ -774,59 +776,61 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
                     model->update_b_pi(state);
                 }
             }
+            COUT << "a = " << state.a << " a_pi = " << state.a_pi << " b = " << state.b_vec << " b_pi = " << state.b_vec_pi << endl;
         }
         
         if (model->sampling_tau)
         {
             model->update_tau_per_forest(state, sweeps, trees_con);
         }
+        COUT << "tau_con = " << model->tau_con << endl;
         
         // treatment forest, using pi(X)
         model->set_flags(state, 1, 1);
-        
+
         for (size_t tree_ind = 0; tree_ind < state.num_trees_mod_pi; tree_ind++)
         {
             if (verbose)
             {
-                COUT << "sweep " << sweeps << " tree " << tree_ind << endl;
+                COUT << "sweep " << sweeps << " tau(pi) tree " << tree_ind << endl;
             }
-            
+
             // Draw Sigma
             model->update_state(state, tree_ind, x_struct_mod_pi, 1);
-            
+
             sigma1_draw_xinfo[sweeps][tree_ind + state.num_trees_con + state.num_trees_con_pi] = state.sigma_vec[1];
-            
+
             if (state.use_all && (sweeps > state.burnin) && (state.mtry != state.p))
             {
                 state.use_all = false;
             }
-            
+
             // clear counts of splits for one tree
             (*state.split_count_current_tree).resize(state.p_mod_pi);
             std::fill((*state.split_count_current_tree).begin(), (*state.split_count_current_tree).end(), 0.0);
-            
+
             // subtract old tree for sampling case
             if (state.sample_weights)
             {
                 (*state.mtry_weight_current_tree_mod_pi) = (*state.mtry_weight_current_tree_mod_pi) - (*state.split_count_all_tree_mod_pi)[tree_ind];
                 (*state.mtry_weight_current_tree) = (*state.mtry_weight_current_tree_mod_pi);
             }
-            
+
             // update tau_fit from full fit to partial fit
             model->subtract_old_tree_fit(tree_ind, state, x_struct_mod_pi);
-            
+
             // calculate partial residuals based on partial fit
             model->update_partial_residuals(tree_ind, state, x_struct_mod_pi);
-            
+
             model->initialize_root_suffstat(state, trees_mod_pi[sweeps][tree_ind].suff_stat);
-            
+
             trees_mod_pi[sweeps][tree_ind].grow_from_root(state, pi_Xorder_std_mod, x_struct_mod_pi.X_counts, x_struct_mod_pi.X_num_unique, model, x_struct_mod_pi, sweeps, tree_ind);
-            
+
             // update tau_fit from partial fit to full fit
             model->add_new_tree_fit(tree_ind, state, x_struct_mod_pi);
-            
+
             model->update_split_counts(state, tree_ind);
-            
+
             if (sweeps >= state.burnin)
             {
                 for (size_t i = 0; i < (*state.split_count_all_mod_pi).size(); i++)
@@ -834,7 +838,7 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
                     (*state.split_count_all_mod_pi)[i] += (*state.split_count_current_tree)[i];
                 }
             }
-            
+
             if (sweeps != 0)
             {
                 if (state.a_scaling)
@@ -848,7 +852,13 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
                     model->update_b_pi(state);
                 }
             }
+            COUT << "a = " << state.a << " a_pi = " << state.a_pi << " b = " << state.b_vec << " b_pi = " << state.b_vec_pi << endl;
         }
+        if (model->sampling_tau)
+        {
+            model->update_tau_per_forest(state, sweeps, trees_mod_pi);
+        }
+        COUT << "tau_mod_pi = " << model->tau_mod_pi << endl;
         
         // treatment forest, using X
         model->set_flags(state, 1, 0);
@@ -857,7 +867,7 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
         {
             if (verbose)
             {
-                COUT << "sweep " << sweeps << " tree " << tree_ind << endl;
+                COUT << "sweep " << sweeps << " tau(x) tree " << tree_ind << endl;
             }
             
             // Draw Sigma
@@ -917,12 +927,14 @@ void mcmc_loop_xbcf_discrete_propensity_shrinkage(
                     model->update_b_pi(state);
                 }
             }
+            COUT << "a = " << state.a << " a_pi = " << state.a_pi << " b = " << state.b_vec << " b_pi = " << state.b_vec_pi << endl;
         }
         
         if (model->sampling_tau)
         {
             model->update_tau_per_forest(state, sweeps, trees_mod);
         }
+        COUT << "tau_mod = " << model->tau_mod << endl;
         
         // Store results
         tau_con_xinfo[0][sweeps] = model->tau_con;

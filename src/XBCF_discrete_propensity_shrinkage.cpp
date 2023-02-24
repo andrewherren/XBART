@@ -226,24 +226,24 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
 
     // define model
     XBCFDiscretePropensityShrinkageModel *model = new XBCFDiscretePropensityShrinkageModel(
-        kap, s, tau_con, tau_mod, tau_con_pi, tau_mod_pi, alpha_con, beta_con, alpha_mod, beta_mod, 
-        alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, sampling_tau, 
-        tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, tau_con_pi_kap, 
+        kap, s, tau_con, tau_mod, tau_con_pi, tau_mod_pi, alpha_con, beta_con, alpha_mod, beta_mod,
+        alpha_con_pi, beta_con_pi, alpha_mod_pi, beta_mod_pi, sampling_tau,
+        tau_con_kap, tau_con_s, tau_mod_kap, tau_mod_s, tau_con_pi_kap,
         tau_con_pi_s, tau_mod_pi_kap, tau_mod_pi_s
     );
     model->setNoSplitPenalty(no_split_penalty);
 
     // State settings
     XBCFDiscretePropensityShrinkageState state(
-            &Z_std, Xpointer_con, Xpointer_mod, Xorder_std_con, Xorder_std_mod, 
-            pi_Xpointer_con, pi_Xpointer_mod, pi_Xorder_std_con, pi_Xorder_std_mod, 
-            N, p_con, p_mod, num_trees_con, num_trees_mod, 
-            p_con_pi, p_mod_pi, num_trees_con_pi, num_trees_mod_pi, 
-            p_categorical_con, p_categorical_mod, p_continuous_con, p_continuous_mod, 
-            p_categorical_con_pi, p_categorical_mod_pi, p_continuous_con_pi, p_continuous_mod_pi, 
-            set_random_seed, random_seed, n_min, num_cutpoints, 
-            mtry_con, mtry_mod, mtry_con_pi, mtry_mod_pi, num_sweeps, sample_weights, 
-            &y_std, 1.0, max_depth, y_mean, burnin, model->dim_residual, nthread, parallel, 
+            &Z_std, Xpointer_con, Xpointer_mod, Xorder_std_con, Xorder_std_mod,
+            pi_Xpointer_con, pi_Xpointer_mod, pi_Xorder_std_con, pi_Xorder_std_mod,
+            N, p_con, p_mod, num_trees_con, num_trees_mod,
+            p_con_pi, p_mod_pi, num_trees_con_pi, num_trees_mod_pi,
+            p_categorical_con, p_categorical_mod, p_continuous_con, p_continuous_mod,
+            p_categorical_con_pi, p_categorical_mod_pi, p_continuous_con_pi, p_continuous_mod_pi,
+            set_random_seed, random_seed, n_min, num_cutpoints,
+            mtry_con, mtry_mod, mtry_con_pi, mtry_mod_pi, num_sweeps, sample_weights,
+            &y_std, 1.0, max_depth, y_mean, burnin, model->dim_residual, nthread, parallel,
             a_scaling, b_scaling, N_trt, N_ctrl);
 
     // initialize X_struct
@@ -269,12 +269,13 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     
     ////////////////////////////////////////////////////////////////
     mcmc_loop_xbcf_discrete_propensity_shrinkage(
-        Xorder_std_con, Xorder_std_mod, pi_Xorder_std_con, pi_Xorder_std_mod, verbose, 
-        sigma0_draw_xinfo, sigma1_draw_xinfo, a_xinfo, b_xinfo, a_pi_xinfo, 
-        b_pi_xinfo, tau_con_xinfo, tau_mod_xinfo, tau_con_pi_xinfo, tau_mod_pi_xinfo, 
-        trees_con, trees_mod, trees_con_pi, trees_mod_pi, no_split_penalty, 
+        Xorder_std_con, Xorder_std_mod, pi_Xorder_std_con, pi_Xorder_std_mod, verbose,
+        sigma0_draw_xinfo, sigma1_draw_xinfo, a_xinfo, b_xinfo, a_pi_xinfo,
+        b_pi_xinfo, tau_con_xinfo, tau_mod_xinfo, tau_con_pi_xinfo, tau_mod_pi_xinfo,
+        trees_con, trees_mod, trees_con_pi, trees_mod_pi, no_split_penalty,
         state, model, x_struct_con, x_struct_mod, x_struct_con_pi, x_struct_mod_pi
     );
+    COUT << "Finished MCMC loop " << endl;
     
     // R Objects to Return
     Rcpp::NumericMatrix sigma0_draw(num_trees_con + num_trees_mod + num_trees_con_pi + num_trees_mod_pi, num_sweeps); // save predictions of each tree
@@ -294,20 +295,20 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     Rcpp::NumericVector split_count_sum_mod(p_mod, 0);
 
     Rcpp::NumericMatrix a_pi_draw(num_sweeps, 1);
-    
+
     Rcpp::NumericMatrix b_pi_draw(num_sweeps, 2);
-    
+
     Rcpp::NumericMatrix tau_con_pi_draw(num_sweeps, 1);
-    
+
     Rcpp::NumericMatrix tau_mod_pi_draw(num_sweeps, 1);
-    
+
     Rcpp::NumericVector split_count_sum_con_pi(p_con_pi, 0);
-    
+
     Rcpp::NumericVector split_count_sum_mod_pi(p_mod_pi, 0);
     
     // copy from std vector to Rcpp Numeric Matrix objects
     Matrix_to_NumericMatrix(sigma0_draw_xinfo, sigma0_draw);
-    Matrix_to_NumericMatrix(sigma0_draw_xinfo, sigma0_draw);
+    Matrix_to_NumericMatrix(sigma1_draw_xinfo, sigma1_draw);
     Matrix_to_NumericMatrix(a_xinfo, a_draw);
     Matrix_to_NumericMatrix(tau_con_xinfo, tau_con_draw);
     Matrix_to_NumericMatrix(tau_mod_xinfo, tau_mod_draw);
@@ -330,13 +331,13 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     {
         split_count_sum_con_pi(i) = (int)(*state.split_count_all_con_pi)[i];
     }
-    
+
     for (size_t i = 0; i < p_mod_pi; i++)
     {
         split_count_sum_mod_pi(i) = (int)(*state.split_count_all_mod_pi)[i];
     }
 
-    // print out tree structure, for usage of BART warm-start
+    // // print out tree structure, for usage of BART warm-start
     // Rcpp::StringVector output_tree_con(num_sweeps);
     // Rcpp::StringVector output_tree_mod(num_sweeps);
     // 
@@ -365,7 +366,7 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     
     thread_pool.stop();
 
-    Rcpp::List output = Rcpp::List::create(
+    return Rcpp::List::create(
         Rcpp::Named("sigma0") = sigma0_draw,
         Rcpp::Named("sigma1") = sigma1_draw,
         Rcpp::Named("a") = a_draw,
@@ -383,12 +384,4 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
         Rcpp::Named("tree_json_mod_pi") = tree_json_mod_pi,
         Rcpp::Named("tree_json_con_pi") = tree_json_con_pi
     );
-    // Rcpp::Named("tree_string_mod") = output_tree_mod,
-    // Rcpp::Named("tree_string_con") = output_tree_con,
-    // Rcpp::Named("tree_string_mod_pi") = output_tree_mod_pi,
-    // Rcpp::Named("tree_string_con_pi") = output_tree_con_pi,
-    
-    COUT << "Created output list" << endl;
-    
-    return output;
 }

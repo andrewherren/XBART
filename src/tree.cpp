@@ -645,6 +645,8 @@ void tree::grow_from_root(State &state, matrix<size_t> &Xorder_std, std::vector<
             x_struct.data_pointers[tree_ind][Xorder_std[0][i]] = &this->theta_vector;
         }
 
+        COUT << "No split, leaf parameter = " << this->theta_vector[0] << endl;
+        
         this->l = 0;
         this->r = 0;
         return;
@@ -653,6 +655,8 @@ void tree::grow_from_root(State &state, matrix<size_t> &Xorder_std, std::vector<
     this->v = split_var;
     this->c = *(state.X_std + state.n_y * split_var + Xorder_std[split_var][split_point]);
 
+    COUT << "Split on feature " << split_var << " value " << this->c << endl;
+    
     size_t index_in_full = 0;
     while ((*state.Xorder_std)[split_var][index_in_full] != Xorder_std[split_var][split_point])
     {

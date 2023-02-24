@@ -475,7 +475,7 @@ void XBCFDiscretePropensityShrinkageModel::ini_tau_mu_fit(State &state)
         (*state.mu_fit)[i] = 0;
         (*state.tau_fit)[i] = value;
         (*state.mu_pi_fit)[i] = 0;
-        (*state.tau_pi_fit)[i] = value;
+        (*state.tau_pi_fit)[i] = 0;
     }
     return;
 }

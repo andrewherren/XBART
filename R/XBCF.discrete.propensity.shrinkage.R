@@ -262,6 +262,8 @@ XBCF.discrete.propensity.shrinkage <- function(
         y <- (y - meany) / sdy
     }
 
+    cat("Finished setup for RCPP call \n")
+    
     obj <- XBCF_discrete_propensity_shrinkage_cpp(
         y, Z, X_con, X_mod, num_trees_con, num_trees_mod, 
         pi_X_con, pi_X_mod, num_trees_con_pi, num_trees_mod_pi, 
@@ -275,6 +277,8 @@ XBCF.discrete.propensity.shrinkage <- function(
         pr_scale, trt_scale, a_scaling, b_scaling, verbose, update_tau, parallel, 
         set_random_seed, random_seed, sample_weights, nthread
     )
+    
+    cat("Ran RCPP call \n")
 
     # store mean and sd in the model object (for predictions)
     obj$meany <- meany
