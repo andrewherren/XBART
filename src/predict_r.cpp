@@ -276,7 +276,7 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_predict(
     double *Xpointer_mod = &X_std_mod[0];
     double *pi_Xpointer_con = &pi_X_std_con[0];
     double *pi_Xpointer_mod = &pi_X_std_mod[0];
-    
+
     // Trees
     std::vector<std::vector<tree>> *trees_con = tree_con;
     std::vector<std::vector<tree>> *trees_mod = tree_mod;
@@ -306,6 +306,7 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_predict(
     
     matrix<double> yhats_test_xinfo;
     ini_xinfo(yhats_test_xinfo, N, num_sweeps);
+    
     XBCFDiscretePropensityShrinkageModel *model = new XBCFDiscretePropensityShrinkageModel();
     
     // Predict
@@ -334,7 +335,7 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_predict(
             treatment_pi(i, j) = treatment_pi_xinfo[j][i];
         }
     }
-    
+
     return Rcpp::List::create(
         Rcpp::Named("mu") = prognostic, 
         Rcpp::Named("tau") = treatment, 

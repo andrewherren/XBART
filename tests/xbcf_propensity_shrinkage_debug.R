@@ -51,7 +51,7 @@ prop_model_full_predictions <- predict(prop_model_full, X = x)
 pihat.full <- prop_model_full_predictions$prob[,2]
 
 # Fit a series of propensity models with a sample of the covariates in x
-n_prop_submodels <- 9
+n_prop_submodels <- 1
 pihat.subset <- matrix(NA, nrow = n, ncol = n_prop_submodels)
 for (i in 1:n_prop_submodels){
     # Select a subset of covariates
@@ -79,22 +79,22 @@ x_mod <- x
 
 # Run XBCF with propensity shrinkage
 t1 = proc.time()
-# xbcf.fit.xb <- XBART::XBCF.discrete.propensity.shrinkage(
-#     y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pihat.full,
-#     pi_X_con = pi_x_con, pi_X_mod = pi_x_mod,
+xbcf.fit.xb <- XBART::XBCF.discrete.propensity.shrinkage(
+    y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pihat.full,
+    pi_X_con = pi_x_con, pi_X_mod = pi_x_mod,
+    p_categorical_con = 5, p_categorical_mod = 5,
+    num_sweeps = 60, burnin = 30, 
+)
+# xbcf.fit.xb <- XBART::XBCF.discrete(
+#     y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pi,
 #     p_categorical_con = 5, p_categorical_mod = 5,
 #     num_sweeps = 60, burnin = 30
 # )
-xbcf.fit.xb <- XBART::XBCF.discrete(
-    y = y, Z = z, X_con = x_con, X_mod = x_mod, pihat = pi,
-    p_categorical_con = 5, p_categorical_mod = 5,
-    num_sweeps = 60, burnin = 30
-)
 t1 = proc.time() - t1
 
 # Compute tauhat(X)
-# pred <- predict(xbcf.fit.xb, X_con = x_con, X_mod = x_mod, Z = z, pi_X_con = pi_x_con, pi_X_mod = pi_x_mod, pihat = pihat.full, burnin = 30)
-pred <- predict(xbcf.fit.xb, X_con = x_con, X_mod = x_mod, Z = z, pihat = pihat.full, burnin = 30)
+pred <- predict(xbcf.fit.xb, X_con = x_con, X_mod = x_mod, Z = z, pi_X_con = pi_x_con, pi_X_mod = pi_x_mod, pihat = pihat.full, burnin = 30)
+# pred <- predict(xbcf.fit.xb, X_con = x_con, X_mod = x_mod, Z = z, pihat = pihat.full, burnin = 30)
 tauhats <- pred$tau.adj.mean
 
 # Evaluate RMSE and runtime

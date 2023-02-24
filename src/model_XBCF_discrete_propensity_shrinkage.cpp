@@ -426,6 +426,8 @@ void XBCFDiscretePropensityShrinkageModel::predict_std(
     matrix<double> output_con_pi;
     ini_matrix(output_con_pi, this->dim_theta, trees_con_pi[0].size());
     
+    
+    
     for (size_t sweeps = 0; sweeps < num_sweeps; sweeps++)
     {
         for (size_t data_ind = 0; data_ind < N_test; data_ind++)
@@ -838,7 +840,7 @@ void XBCFDiscretePropensityShrinkageModel::update_a_pi(State &state)
     double v1 = 1 / (1.0 / v0 + mu2sum_trt / pow(state.sigma_vec[1], 2));
     double m1 = v1 * (m0 / v0 + (muressum_trt) / pow(state.sigma_vec[1], 2));
     
-    state.a = m1 + sqrt(v1) * normal_samp(state.gen);
+    state.a_pi = m1 + sqrt(v1) * normal_samp(state.gen);
     
     return;
 }
@@ -893,8 +895,8 @@ void XBCFDiscretePropensityShrinkageModel::update_b_pi(State &state)
     double b0 = m0 + sqrt(v0) * normal_samp(state.gen);
     double b1 = m1 + sqrt(v1) * normal_samp(state.gen);
     
-    state.b_vec[1] = b1;
-    state.b_vec[0] = b0;
+    state.b_vec_pi[1] = b1;
+    state.b_vec_pi[0] = b0;
     
     return;
 }

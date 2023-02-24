@@ -243,20 +243,29 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
             p_categorical_con_pi, p_categorical_mod_pi, p_continuous_con_pi, p_continuous_mod_pi, 
             set_random_seed, random_seed, n_min, num_cutpoints, 
             mtry_con, mtry_mod, mtry_con_pi, mtry_mod_pi, num_sweeps, sample_weights, 
-            &y_std, 1.0, max_depth, y_mean, burnin, model->dim_residual, nthread, parallel, a_scaling, b_scaling, N_trt, N_ctrl);
+            &y_std, 1.0, max_depth, y_mean, burnin, model->dim_residual, nthread, parallel, 
+            a_scaling, b_scaling, N_trt, N_ctrl);
 
     // initialize X_struct
     std::vector<double> initial_theta_con(1, 0);
-    X_struct x_struct_con(Xpointer_con, &y_std, N, Xorder_std_con, p_categorical_con, p_continuous_con, &initial_theta_con, num_trees_con);
+    X_struct x_struct_con(
+            Xpointer_con, &y_std, N, Xorder_std_con, p_categorical_con, p_continuous_con, &initial_theta_con, num_trees_con
+    );
 
     std::vector<double> initial_theta_mod(1, y_mean / (double)num_trees_mod);
-    X_struct x_struct_mod(Xpointer_mod, &y_std, N, Xorder_std_mod, p_categorical_mod, p_continuous_mod, &initial_theta_mod, num_trees_mod);
+    X_struct x_struct_mod(
+            Xpointer_mod, &y_std, N, Xorder_std_mod, p_categorical_mod, p_continuous_mod, &initial_theta_mod, num_trees_mod
+    );
 
     std::vector<double> initial_theta_con_pi(1, 0);
-    X_struct x_struct_con_pi(pi_Xpointer_con, &y_std, N, pi_Xorder_std_con, p_categorical_con_pi, p_continuous_con_pi, &initial_theta_con_pi, num_trees_con_pi);
+    X_struct x_struct_con_pi(
+            pi_Xpointer_con, &y_std, N, pi_Xorder_std_con, p_categorical_con_pi, p_continuous_con_pi, &initial_theta_con_pi, num_trees_con_pi
+    );
     
     std::vector<double> initial_theta_mod_pi(1, y_mean / (double)num_trees_mod_pi);
-    X_struct x_struct_mod_pi(pi_Xpointer_mod, &y_std, N, pi_Xorder_std_mod, p_categorical_mod_pi, p_continuous_mod_pi, &initial_theta_mod_pi, num_trees_mod_pi);
+    X_struct x_struct_mod_pi(
+            pi_Xpointer_mod, &y_std, N, pi_Xorder_std_mod, p_categorical_mod_pi, p_continuous_mod_pi, &initial_theta_mod_pi, num_trees_mod_pi
+    );
     
     ////////////////////////////////////////////////////////////////
     mcmc_loop_xbcf_discrete_propensity_shrinkage(
@@ -266,7 +275,7 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
         trees_con, trees_mod, trees_con_pi, trees_mod_pi, no_split_penalty, 
         state, model, x_struct_con, x_struct_mod, x_struct_con_pi, x_struct_mod_pi
     );
-
+    
     // R Objects to Return
     Rcpp::NumericMatrix sigma0_draw(num_trees_con + num_trees_mod + num_trees_con_pi + num_trees_mod_pi, num_sweeps); // save predictions of each tree
 
@@ -328,11 +337,11 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     }
 
     // print out tree structure, for usage of BART warm-start
-    Rcpp::StringVector output_tree_con(num_sweeps);
-    Rcpp::StringVector output_tree_mod(num_sweeps);
-
-    tree_to_string(trees_mod, output_tree_mod, num_sweeps, num_trees_mod, p_mod);
-    tree_to_string(trees_con, output_tree_con, num_sweeps, num_trees_con, p_con);
+    // Rcpp::StringVector output_tree_con(num_sweeps);
+    // Rcpp::StringVector output_tree_mod(num_sweeps);
+    // 
+    // tree_to_string(trees_mod, output_tree_mod, num_sweeps, num_trees_mod, p_mod);
+    // tree_to_string(trees_con, output_tree_con, num_sweeps, num_trees_con, p_con);
 
     Rcpp::StringVector tree_json_mod(1);
     Rcpp::StringVector tree_json_con(1);
@@ -341,11 +350,11 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     tree_json_mod[0] = j.dump(4);
     tree_json_con[0] = j2.dump(4);
 
-    Rcpp::StringVector output_tree_con_pi(num_sweeps);
-    Rcpp::StringVector output_tree_mod_pi(num_sweeps);
-    
-    tree_to_string(trees_mod_pi, output_tree_mod_pi, num_sweeps, num_trees_mod_pi, p_mod_pi);
-    tree_to_string(trees_con_pi, output_tree_con_pi, num_sweeps, num_trees_con_pi, p_con_pi);
+    // Rcpp::StringVector output_tree_con_pi(num_sweeps);
+    // Rcpp::StringVector output_tree_mod_pi(num_sweeps);
+    // 
+    // tree_to_string(trees_mod_pi, output_tree_mod_pi, num_sweeps, num_trees_mod_pi, p_mod_pi);
+    // tree_to_string(trees_con_pi, output_tree_con_pi, num_sweeps, num_trees_con_pi, p_con_pi);
     
     Rcpp::StringVector tree_json_mod_pi(1);
     Rcpp::StringVector tree_json_con_pi(1);
@@ -356,7 +365,7 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
     
     thread_pool.stop();
 
-    return Rcpp::List::create(
+    Rcpp::List output = Rcpp::List::create(
         Rcpp::Named("sigma0") = sigma0_draw,
         Rcpp::Named("sigma1") = sigma1_draw,
         Rcpp::Named("a") = a_draw,
@@ -371,10 +380,15 @@ Rcpp::List XBCF_discrete_propensity_shrinkage_cpp(
         Rcpp::Named("model_list") = Rcpp::List::create(Rcpp::Named("y_mean") = y_mean, Rcpp::Named("p_con") = p_con, Rcpp::Named("p_mod") = p_mod),
         Rcpp::Named("tree_json_mod") = tree_json_mod,
         Rcpp::Named("tree_json_con") = tree_json_con,
-        Rcpp::Named("tree_string_mod") = output_tree_mod,
-        Rcpp::Named("tree_string_con") = output_tree_con,
         Rcpp::Named("tree_json_mod_pi") = tree_json_mod_pi,
-        Rcpp::Named("tree_json_con_pi") = tree_json_con_pi,
-        Rcpp::Named("tree_string_mod_pi") = output_tree_mod_pi,
-        Rcpp::Named("tree_string_con_pi") = output_tree_con_pi);
+        Rcpp::Named("tree_json_con_pi") = tree_json_con_pi
+    );
+    // Rcpp::Named("tree_string_mod") = output_tree_mod,
+    // Rcpp::Named("tree_string_con") = output_tree_con,
+    // Rcpp::Named("tree_string_mod_pi") = output_tree_mod_pi,
+    // Rcpp::Named("tree_string_con_pi") = output_tree_con_pi,
+    
+    COUT << "Created output list" << endl;
+    
+    return output
 }
